@@ -1,0 +1,128 @@
+/* ✅ FIX: Main layout using Flexbox for a robust two-column layout */
+.contest-view-layout {
+    display: flex;
+    /* Occupy the full viewport height minus the height of your main site header */
+    height: calc(100vh - 60px); 
+    font-family: sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* Sidebar for contest info and problem list */
+.contest-sidebar {
+    width: 280px;
+    flex-shrink: 0; /* Prevent the sidebar from shrinking */
+    background-color: #fff;
+    border-right: 1px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+}
+
+.contest-header {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.contest-header h2 {
+    font-size: 1.25rem;
+    margin: 0 0 0.75rem;
+    color: #212529;
+}
+
+.timer {
+    font-size: 1.75rem;
+    font-weight: 700;
+    font-family: monospace;
+    color: #dc3545;
+}
+
+.problem-list {
+    margin-top: 1rem;
+    overflow-y: auto; /* Allow problem list to scroll if it's long */
+}
+
+.problem-list h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: #495057;
+}
+
+.problem-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.problem-list li {
+    padding: 0.75rem;
+    cursor: pointer;
+    border-radius: 6px;
+    font-weight: 500;
+    color: #495057;
+    transition: background-color 0.2s;
+}
+
+.problem-list li:hover {
+    background-color: #e9ecef;
+}
+
+.problem-list li.active {
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* ✅ FIX: Main content area that will hold the exam components */
+.contest-main {
+    flex-grow: 1; /* Allow this area to take all remaining space */
+    overflow: hidden; /* This is crucial. It creates a new "containing block" */
+    /* The child component (like DsaExam) will now be constrained by this container's height */
+}
+
+.view-loading, .view-error {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-size: 1.2rem;
+    color: #6c757d;
+}
+
+.view-error {
+    color: #dc3545;
+}
+.submit-contest-button {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 8px 16px;
+    background-color: #ff5252;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 1000;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.submit-contest-button:hover {
+    background-color: #e53935;
+}
+
+.submit-contest-button {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 10px 20px;
+    background-color: red;
+    color: white;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.submit-contest-button:hover {
+    background-color: darkred;
+}
