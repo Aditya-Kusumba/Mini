@@ -20,7 +20,7 @@ async function startServer() {
     });
 
   } catch (error) {
-    console.error('❌ Error starting server:', error.message);
+    console.error('❌ Error starting server:', error.stack);
     console.log('\n🔧 Troubleshooting:');
     console.log('   1. Make sure PostgreSQL is running');
     console.log('   2. Check your .env file has correct DATABASE_URL');
