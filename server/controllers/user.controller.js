@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
-import { register, login, getUserById,updateRefreshToken,checkEmail,checkUsername,updateCandidateProfile,getRecruiterById, getUser,logOut, getRecUser} from "../db.js"
+import { register, login, getUserById,updateRefreshToken,checkEmail,checkUsername,updateCandidateProfile,getRecruiterById, getUser,logOut, getRecUser, genOTP, verOTP} from "../db.js"
 import { query } from "../db.js"
 
 
@@ -338,4 +338,28 @@ export const getPerformanceHistory = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, result.rows, "Performance history fetched successfully."));
 });
 
-export { registerUser, logInUser,logOutUser,checkemail,checkusername,updateDetails,mainDashBoard, getData, getRecData, getCurrentUser, getstats }
+const generateOTP = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+    if (!email) {
+        throw new ApiError(400, "Email is required");
+    }
+    const result = await genOTP(email);
+    if (!result.success) {
+        throw new ApiError(500, "Failed to generate OTP");
+    }
+    res.status(200).json({ success: true, message: "OTP generated successfully" });
+});
+
+const verifyOTP = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+    if (!email || !otp) {
+        throw new ApiError(400, "Email and OTP are required");
+    }
+    const result = await verOTP(email, otp);
+    if (!result.success) {
+        throw new ApiError(400, result.message || "Failed to verify OTP");
+    }
+    res.status(200).json({ success: true, message: "OTP verified successfully" });
+});
+
+export { registerUser, logInUser,logOutUser,checkemail,checkusername,updateDetails,mainDashBoard, getData, getRecData, getCurrentUser, getstats, generateOTP, verifyOTP };

@@ -10,14 +10,21 @@ const client = new Client({
   },
 });
 
+import nodemailer from "nodemailer";
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
 await client.connect();
 console.log("✅ Connected to PostgreSQL");
 const checkUsername = async (username) => {
   const query = `
     (SELECT 1 FROM "Candidates" WHERE username = $1)
-    UNION ALL
-    (SELECT 1 FROM "Recruiters" WHERE username = $1)
-    LIMIT 1;
   `;
   const result = await client.query(query, [username]);
   return result.rows.length > 0;
@@ -26,9 +33,6 @@ const checkUsername = async (username) => {
 const checkEmail = async (email) => {
   const query = `
     (SELECT 1 FROM "Candidates" WHERE email = $1)
-    UNION ALL
-    (SELECT 1 FROM "Recruiters" WHERE email = $1)
-    LIMIT 1;
   `;
   const result = await client.query(query, [email]);
   return result.rows.length > 0;
@@ -67,11 +71,11 @@ const updateRefreshToken = async (userId, role, refreshToken) => {
   const tableName = role === "CANDIDATE" ? "Candidates" : "Recruiters";
   try {
     await client.query(
-      `Select refreshtoken from "${tableName}" WHERE "id" = $1`,
+      `Select "refreshToken" from "${tableName}" WHERE "id" = $1`,
       [userId]
     );
     await client.query(
-      `UPDATE "${tableName}" SET "refreshtoken" = $1 WHERE "id" = $2`,
+      `UPDATE "${tableName}" SET "refreshToken" = $1 WHERE "id" = $2`,
       [refreshToken, userId]
     );
   } catch (err) {
@@ -83,7 +87,7 @@ const updateRefreshToken = async (userId, role, refreshToken) => {
 const getUserById = async (userId) => {
   try {
     const query = `
-      SELECT id, username, email, "fullName", 'CANDIDATE' AS role,"cvUrl", "refreshtoken"
+      SELECT id, username, email, "fullName", 'CANDIDATE' AS role,"cvUrl", "refreshToken"
       FROM "Candidates" WHERE id = $1
       LIMIT 1;
     `;
@@ -98,7 +102,7 @@ const getUserById = async (userId) => {
 const getRecruiterById=async (userId) => {
   try {
     const query = `
-      SELECT id, username, email, "fullName", 'RECRUITER' AS role, "refreshtoken"
+      SELECT id, username, email, "fullName", 'RECRUITER' AS role, "refreshToken"
       FROM "Recruiters" WHERE id = $1
       LIMIT 1;
     `;
@@ -131,8 +135,8 @@ const register = async (username, email, fullName, password, role, company) => {
 
     
     const insertQuery = `
-    INSERT INTO "${tableName}" (username, email, "fullName", "passwordHash", "createdAt", "updatedAt")
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO "${tableName}" (username, email, "fullName", "passwordHash", "created_at")
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING id, username, email, "fullName";
     `;
     const res = await client.query(insertQuery, [
@@ -140,7 +144,6 @@ const register = async (username, email, fullName, password, role, company) => {
       email,
       fullName,
       passwordHash,
-      now,
       now
     ]);
     
@@ -151,7 +154,8 @@ const register = async (username, email, fullName, password, role, company) => {
       company = await client.query(`insert into "Companies" (recruiter_id, company_name) values($1, $2)`, [rec_id, company]);
     
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(newUser);
-    const refreshQuery = `update "${tableName}" set refreshtoken = $1 where id = $2`;
+    const refreshQuery = `update "${tableName}" set "refreshToken" = $1 where id = $2`;
+    console.log("Refresh Token Update Query:", refreshQuery, "Values:", [refreshToken, rec_id]);
     const res2 = await client.query(refreshQuery, [refreshToken, rec_id])
     
     return { success: true, user: newUser, accessToken, refreshToken };
@@ -164,14 +168,10 @@ const register = async (username, email, fullName, password, role, company) => {
 const login = async (credential, password) => {
   try {
     const query = `
-      (SELECT id, username, email, "passwordHash", "fullName", "refreshtoken", 'CANDIDATE' AS role
+      (SELECT id, username, email, "passwordHash", "fullName", "refreshToken", 'CANDIDATE' AS role
       FROM "Candidates"
       WHERE email = $1 OR username = $1
-      )UNION ALL
-      (SELECT id, username, email, "passwordHash", "fullName", "refreshtoken", 'RECRUITER' AS role
-      FROM "Recruiters"
-      WHERE email = $1 OR username = $1)
-      LIMIT 1
+      )
     `;
 
     const res = await client.query(query, [credential]);
@@ -258,6 +258,47 @@ const updateCandidateProfile = async ({
 const logOut = async (userId, role) => {
   await updateRefreshToken(userId, role, null);
   return { success: true, message: "Logged out successfully" };
+};
+
+const genOTP = async (email) => {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Your OTP for Registration",
+    text: `Your OTP for registration is: ${otp}. It is valid for 10 minutes.`,
+  };
+  try {
+    await transporter.sendMail(mailOptions);
+    const otphash = await bcrypt.hash(otp, 10);
+    const insertQuery = `
+    INSERT INTO "otps" (email, otp, expires_at) VALUES ($1, $2, $3)`;
+    const res = await client.query(insertQuery, [
+      email,
+      otphash,
+      new Date(Date.now() + 10 * 60 * 1000)
+    ]);
+  } catch (err) {
+    console.error("Error sending OTP email:", err);
+    throw new ApiError(500, "Failed to send OTP email");
+  }
+};
+
+const verOTP = async (email, otp) => {
+  const query = `SELECT otp, expires_at FROM "otps" WHERE email = $1 ORDER BY expires_at DESC LIMIT 1`;
+  const res = await client.query(query, [email]);
+  if (res.rows.length === 0) {
+    throw new ApiError(400, "No OTP found for this email");
+  }
+  const { otp: otphash, expires_at } = res.rows[0];
+  if (new Date() > expires_at) {
+    throw new ApiError(400, "OTP has expired");
+  }
+  const isMatch = await bcrypt.compare(otp, otphash);
+  if (!isMatch) {
+    throw new ApiError(400, "Invalid OTP");
+  }
+  return { success: true, message: "OTP verified successfully" };
 };
 
 const getUser = async (id) => {
@@ -440,7 +481,9 @@ export {
   updateCandidateProfile,
   getRecruiterById,
   getUser,
-  getRecUser
+  getRecUser,
+  genOTP,
+  verOTP
 };
 
 

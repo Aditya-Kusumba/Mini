@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, EyeOff, User, Mail, Lock, UserCheck } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import './Auth.css';
 
 const Register = () => {
@@ -11,12 +11,17 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    otp: '',
     role: 'CANDIDATE'
   });
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
   const [error, setError] = useState('');
+  const [otpMessage, setOtpMessage] = useState('');
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -28,12 +33,85 @@ const Register = () => {
     });
   };
 
+  // ✅ Generate OTP
+  const handleGenerateOtp = async () => {
+    if (!formData.email) {
+      setOtpMessage('Please enter email first');
+      return;
+    }
+
+    try {
+      setOtpLoading(true);
+      setOtpMessage('');
+      setOtpVerified(false);
+
+      const response = await fetch('/api/users/generate-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setOtpMessage('OTP sent to your email');
+      } else {
+        setOtpMessage(data.message || 'Failed to send OTP');
+      }
+    } catch (err) {
+      setOtpMessage('Error sending OTP');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // ✅ Verify OTP
+  const handleVerifyOtp = async () => {
+    if (!formData.otp) {
+      setOtpMessage('Enter OTP first');
+      return;
+    }
+
+    try {
+      setOtpLoading(true);
+      setOtpMessage('');
+
+      const response = await fetch('/api/users/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          otp: formData.otp
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setOtpVerified(true);
+        setOtpMessage('OTP verified successfully');
+      } else {
+        setOtpVerified(false);
+        setOtpMessage(data.message || 'Invalid OTP');
+      }
+    } catch (err) {
+      setOtpMessage('OTP verification failed');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Validation
+    if (!otpVerified) {
+      setError('Please verify OTP before registering');
+      setLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
@@ -47,10 +125,10 @@ const Register = () => {
     }
 
     try {
-      console.log(formData);
-      const result = await register(formData);
+      const result = await register(formData); // ✅ otp included here
+
       if (result.success) {
-        navigate('/login', { 
+        navigate('/login', {
           state: { message: 'Registration successful! Please login to continue.' }
         });
       } else {
@@ -72,79 +150,101 @@ const Register = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
+          {error && <div className="error-message">{error}</div>}
 
+          {/* Full Name */}
           <div className="form-group">
-            <label htmlFor="fullName" className="form-label">
-              Full Name
-            </label>
-            <div className="input-group">
-              <input
-                type="text"
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your full name"
-                required
-              />
-            </div>
+            <label className="form-label">Full Name</label>
+            <input
+              type="text"
+              name="fullName"
+              value={formData.fullName}
+              onChange={handleChange}
+              className="form-input"
+              required
+            />
           </div>
 
+          {/* Username */}
           <div className="form-group">
-            <label htmlFor="username" className="form-label">
-              Username
-            </label>
-            <div className="input-group">
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Choose a username"
-                required
-              />
-            </div>
+            <label className="form-label">Username</label>
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              className="form-input"
+              required
+            />
           </div>
 
+          {/* Email + Generate OTP */}
           <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email Address
-            </label>
+            <label className="form-label">Email Address</label>
             <div className="input-group">
               <input
                 type="email"
-                id="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 className="form-input"
-                placeholder="Enter your email"
                 required
               />
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleGenerateOtp}
+                disabled={otpLoading}
+              >
+                {otpLoading ? 'Sending...' : 'Generate OTP'}
+              </button>
             </div>
           </div>
 
+          {/* OTP Field + Verify */}
           <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
+            <label className="form-label">Enter OTP</label>
+            <div className="input-group">
+              <input
+                type="text"
+                name="otp"
+                value={formData.otp}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter OTP"
+                required
+              />
+              <button
+                type="button"
+                className="btn btn-success"
+                onClick={handleVerifyOtp}
+                disabled={otpLoading}
+              >
+                Verify OTP
+              </button>
+            </div>
+            {otpMessage && (
+              <div
+                style={{
+                  marginTop: '5px',
+                  color: otpVerified ? 'green' : 'red'
+                }}
+              >
+                {otpMessage}
+              </div>
+            )}
+          </div>
+
+          {/* Password */}
+          <div className="form-group">
+            <label className="form-label">Password</label>
             <div className="input-group">
               <input
                 type={showPassword ? 'text' : 'password'}
-                id="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
                 className="form-input"
-                placeholder="Create a password"
                 required
               />
               <button
@@ -157,19 +257,16 @@ const Register = () => {
             </div>
           </div>
 
+          {/* Confirm Password */}
           <div className="form-group">
-            <label htmlFor="confirmPassword" className="form-label">
-              Confirm Password
-            </label>
+            <label className="form-label">Confirm Password</label>
             <div className="input-group">
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
-                id="confirmPassword"
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 className="form-input"
-                placeholder="Confirm your password"
                 required
               />
               <button
@@ -182,58 +279,14 @@ const Register = () => {
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input type="checkbox" required />
-              <span className="checkbox-text">
-                I agree to the{' '}
-                <Link to="/terms" className="auth-link">
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link to="/privacy" className="auth-link">
-                  Privacy Policy
-                </Link>
-              </span>
-            </label>
-          </div>
-
           <button
             type="submit"
             className="btn btn-primary auth-btn"
             disabled={loading}
           >
-            {loading ? (
-              <>
-                <div className="spinner"></div>
-                Creating account...
-              </>
-            ) : (
-              'Create Account'
-            )}
+            {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
-
-        <div className="auth-footer">
-          <p className="auth-footer-text">
-            Already have an account?{' '}
-            <Link to="/login" className="auth-link">
-              Sign in here
-            </Link>
-          </p>
-          <p className="auth-footer-text">
-            Are you a recruiter?{' '}
-            <Link to="/recruiter/register" className="auth-link">
-              Recruiter registration
-            </Link>
-          </p>
-        </div>
-      </div>
-
-      <div className="auth-decoration">
-        <div className="decoration-shape shape-1"></div>
-        <div className="decoration-shape shape-2"></div>
-        <div className="decoration-shape shape-3"></div>
       </div>
     </div>
   );

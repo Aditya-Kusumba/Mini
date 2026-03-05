@@ -1,7 +1,7 @@
 import Router from "express"
 import {registerUser,logInUser,logOutUser} from "../controllers/user.controller.js"
 import {upload} from "../middlewares/multer.js"
-import { checkusername, checkemail, updateDetails, mainDashBoard, getData, getPerformanceHistory, getRecData, getCurrentUser, getAppliedJobs, applyForJob, getstats, getUserParticipations } from "../controllers/user.controller.js";
+import { checkusername, checkemail, updateDetails, mainDashBoard, getData, getPerformanceHistory, getRecData, getCurrentUser, getAppliedJobs, applyForJob, getstats, getUserParticipations, generateOTP, verifyOTP } from "../controllers/user.controller.js";
 
 import { verifyJWT } from "../middlewares/auth.js"; 
 const router  = Router();
@@ -20,6 +20,7 @@ router.route("/getRecData").get(verifyJWT,getRecData);
 router.route('/job-applications/:domainId').get(verifyJWT, getAppliedJobs);
 router.route('/job-applications').post(verifyJWT, applyForJob);
 router.route('/getstats').get(verifyJWT, getstats);
-
+router.route('/generate-otp').post(generateOTP);
+router.route('/verify-otp').post(verifyOTP);
 
 export default router
