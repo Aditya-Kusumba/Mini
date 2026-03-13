@@ -7,6 +7,8 @@ import cookieParser from "cookie-parser";
 import pg from "pg";
 
 import userRoutes from "./routes/user.routes.js";
+import candidateRouter from "./routes/candidate.routes.js";
+import domainDashboardRouter from "./routes/domainDashboard.routes.js";
 
 const app = express();
 
@@ -14,7 +16,6 @@ app.use(cors({
     origin: process.env.CORS_ORIGIN,
     credentials: true,
 }));
-
 app.use(express.json({ limit: "200kb" }));
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(cookieParser());
@@ -27,16 +28,12 @@ if (!process.env.DATABASE_URL) {
     process.exit(1);
 }
 
-// ✅ THIS IS THE IMPORTANT PART FOR SUPABASE
 export const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false,
-    },
-    family : 4,
+    ssl: { rejectUnauthorized: false },
+    family: 4,
 });
 
-// Test DB connection properly
 try {
     await pool.query("SELECT 1");
     console.log("✅ Supabase connected successfully\n");
@@ -45,6 +42,9 @@ try {
     process.exit(1);
 }
 
+// ✅ All routes registered once, after DB is ready
 app.use("/api/users", userRoutes);
+app.use("/api/v1/candidate", candidateRouter);
+app.use("/api/v1/candidate", domainDashboardRouter); // ✅ correct
 
 export { app };
