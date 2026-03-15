@@ -1,0 +1,20 @@
+.dd-daily { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.dd-daily-top   { display: flex; align-items: center; gap: 8px; }
+.dd-daily-label { font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+.dd-pname       { font-size: 14px; font-weight: 500; color: var(--text); }
+
+.dd-overview { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .dd-overview { grid-template-columns: 1fr; } }
+
+.topics-list { display: flex; flex-direction: column; gap: 4px; max-height: 300px; overflow-y: auto; }
+.topic-row   { display: flex; align-items: center; gap: 9px; padding: 8px; border-radius: var(--radius-sm); transition: background var(--t); }
+.topic-row:hover  { background: var(--bg-2); }
+.topic-dot        { width: 9px; height: 9px; border-radius: 50%; background: var(--border-2); flex-shrink: 0; transition: all var(--t); }
+.topic-dot.done   { background: var(--green); }
+.topic-name       { font-size: 13px; color: var(--text-2); flex: 1; }
+.topic-score      { font-size: 12px; color: var(--text-3); }
+
+.prob-list { display: flex; flex-direction: column; gap: 2px; }
+.prob-row  { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px; border-radius: var(--radius-sm); transition: background var(--t); }
+.prob-row:hover { background: var(--bg-2); }
+.prob-name { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; min-width: 140px; }

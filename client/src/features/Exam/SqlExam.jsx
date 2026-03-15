@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
-import api from "./axiosConfig";
+import axios from "axios";
 
 // Helper component to render a table from the query result
 const ResultTable = ({ result }) => {
@@ -52,7 +52,7 @@ export default function SqlExam({ problem, allProblemIds }) {
     const fetchSubmissions = async () => {
         if (submissions.length > 0 && activeTab === 'submissions') return;
         try {
-            const { data } = await api.get(`/api/submissions/${problemId}`);
+            const { data } = await axios.get(`http://localhost:5000/api/submissions/${problemId}`);
             setSubmissions(data);
         } catch (error) {
             console.error("Failed to fetch submissions", error);
@@ -71,13 +71,13 @@ export default function SqlExam({ problem, allProblemIds }) {
         setIsSubmitting(true);
         setSubmissionResult(null);
         try {
-            const { data } = await api.post(`/api/submit/sql`, {
+            const { data } = await axios.post(`http://localhost:5000/api/submit/sql`, {
                 problemId,
                 userQuery: query,
             });
             setSubmissionResult(data);
             // After submitting, refresh the submissions list automatically
-            const refreshedSubmissions = await api.get(`/api/submissions/${problemId}`);
+            const refreshedSubmissions = await axios.get(`http://localhost:5000/api/submissions/${problemId}`);
             setSubmissions(refreshedSubmissions.data);
         } catch (error) {
             setSubmissionResult({ status: 'Error', error: 'Failed to submit query to the server.' });

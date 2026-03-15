@@ -122,7 +122,7 @@ const Home = () => {
       <section className="features-section">
         <div className="container">
           <div className="section-header">
-            <h2 className="section-title">Why Choose TierHire?</h2>
+            <h2 className="section-title">Why Choose Commit2Code?</h2>
             <p className="section-description">
               Experience the future of tech recruitment with our innovative tier-based system
             </p>
@@ -192,7 +192,7 @@ const Home = () => {
           <div className="cta-content">
             <h2 className="cta-title">Ready to Start Your Journey?</h2>
             <p className="cta-description">
-              Join thousands of developers who have already found their dream jobs through TierHire
+              Join thousands of developers who have already found their dream jobs through Commit2Code. Whether you're just starting out or looking to level up, our platform is designed to help you succeed.
             </p>
             {!isAuthenticated && (
               <div className="cta-actions">

@@ -1,0 +1,21 @@
+/* DomainSelection.css */
+.ds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+.ds-card {
+  padding: 24px; display: flex; flex-direction: column; gap: 14px;
+  position: relative; transition: all var(--t);
+  animation: fadeUp .35s ease both;
+}
+.ds-card:nth-child(2) { animation-delay: .06s; }
+.ds-card:nth-child(3) { animation-delay: .12s; }
+.ds-card:nth-child(4) { animation-delay: .18s; }
+.ds-card:hover  { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.ds-card.in     { border-color: var(--accent); }
+.ds-enrolled    { position: absolute; top: 14px; right: 14px; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(var(--accent-rgb),.1); padding: 3px 8px; border-radius: 100px; }
+.ds-icon   { width: 58px; height: 58px; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; }
+.ds-name   { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text); }
+.ds-desc   { font-size: 13px; color: var(--text-3); line-height: 1.55; flex: 1; }
+.ds-meta   { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-3); }

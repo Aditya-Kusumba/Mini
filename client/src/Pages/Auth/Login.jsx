@@ -1,164 +1,140 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, User, ShieldCheck, Briefcase, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Eye, EyeOff, User, Lock, ArrowRight } from 'lucide-react';
 import './Auth.css';
 
-const Login = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    role : 'CANDIDATE'
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+const ROLES = [
+  { key: 'candidate', label: 'Candidate', icon: User },
+  { key: 'admin',     label: 'Admin',     icon: ShieldCheck },
+  { key: 'recruiter', label: 'Recruiter', icon: Briefcase },
+];
 
-  const { login, user } = useAuth();
-  const { isDark } = useTheme();
+export default function Login() {
   const navigate = useNavigate();
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const { login, adminLogin } = useAuth();
+  const [role,    setRole]    = useState('candidate');
+  const [showPw,  setShowPw]  = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
+  const [form,    setForm]    = useState({ email: '', password: '' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-
+    setError(''); setLoading(true);
     try {
-      const formData1 = {...formData, role : "CANDIDATE"}
-      const result = await login(formData1);
-      if (result.success){
-        if(result.user.cvUrl!=null)
-          navigate('/dashboard')
-        else
-          navigate('/updatedashboard');
-      } else {
-        setError(result.message);
+      if (role === 'candidate') {
+        const res = await login(form.email, form.password);
+        if (res?.success) navigate('/dashboard');
+        else setError(res?.message || 'Invalid credentials');
+
+      } else if (role === 'admin') {
+        const res = await adminLogin(form.email, form.password);
+        if (res?.success) navigate('/admin/dashboard');
+        else setError(res?.message || 'Invalid admin credentials');
+
+      } else if (role === 'recruiter') {
+        // recruiter uses same login endpoint, role stored in token
+        const res = await login(form.email, form.password);
+        if (res?.success) navigate('/recruiter/dashboard');
+        else setError(res?.message || 'Invalid recruiter credentials');
       }
-    } catch (error) {
-      setError('Login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Something went wrong');
+    } finally { setLoading(false); }
+  };
+
+  const headings = {
+    candidate: { title: 'Sign in',       desc: 'Continue your learning journey.' },
+    admin:     { title: 'Admin sign in',  desc: 'Access your college management panel.' },
+    recruiter: { title: 'Recruiter sign in', desc: 'Find and hire top candidates.' },
   };
 
   return (
-    <div className="auth-container">
+    <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-header">
-          <h1 className="auth-title">Welcome Back</h1>
-          <p className="auth-subtitle">Sign in to your account to continue</p>
+        {/* Logo */}
+        <Link to="/" className="auth-logo">
+          <div className="auth-logo-mark">
+            <svg viewBox="0 0 18 18" fill="none">
+              <path d="M2 14L9 4l7 10H2z" fill="white" opacity=".9"/>
+              <circle cx="9" cy="12" r="2.5" fill="white"/>
+            </svg>
+          </div>
+          <span className="auth-logo-name">Commit2Code</span>
+        </Link>
+
+        {/* Role tabs */}
+        <div className="auth-role-tabs">
+          {ROLES.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              className={`auth-role-tab${role === key ? ' active' : ''}`}
+              onClick={() => { setRole(key); setError(''); }}
+            >
+              <Icon size={13} /> {label}
+            </button>
+          ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
+        <h1 className="auth-heading">{headings[role].title}</h1>
+        <p className="auth-desc">
+          {headings[role].desc}{' '}
+          {role === 'candidate' && <><Link to="/register">Create account →</Link></>}
+          {role === 'recruiter' && <><Link to="/recruiter/register">Register →</Link></>}
+        </p>
 
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email Address
-            </label>
-            <div className="input-group">
-              <input
-                type="text"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your username/email"
-                required
-              />
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="field">
+            <label className="field-label">Email address</label>
+            <div className="field-input-wrap">
+              <span className="field-ico"><Mail size={14} /></span>
+              <input className="field-input" type="email" placeholder="you@example.com"
+                value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                autoComplete="email" required />
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
-            <div className="input-group">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="password-toggle"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          <div className="field">
+            <label className="field-label">Password</label>
+            <div className="field-input-wrap">
+              <span className="field-ico"><Lock size={14} /></span>
+              <input className="field-input" type={showPw ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                autoComplete="current-password" required />
+              <button type="button" className="field-eye" onClick={() => setShowPw(s => !s)}>
+                {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
           </div>
 
-          <div className="form-options">
-            <label className="checkbox-label">
-              <input type="checkbox" />
-              <span className="checkbox-text">Remember me</span>
-            </label>
-            <Link to="/forgot-password" className="forgot-link">
-              Forgot password?
-            </Link>
-          </div>
+          {error && (
+            <div className="auth-banner error">
+              <AlertCircle size={14} /> {error}
+            </div>
+          )}
 
-          <button
-            type="submit"
-            className="btn btn-primary auth-btn"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <div className="spinner"></div>
-                Signing in...
-              </>
-            ) : (
-              <>
-                Sign In
-                <ArrowRight size={20} />
-              </>
-            )}
+          <button type="submit" className="auth-submit" disabled={loading}>
+            {loading ? <span className="btn-spinner" /> : `Sign in as ${ROLES.find(r => r.key === role)?.label}`}
           </button>
         </form>
 
-        <div className="auth-footer">
-          <p className="auth-footer-text">
-            Don't have an account?{' '}
-            <Link to="/register" className="auth-link">
-              Sign up here
+        {role === 'candidate' && (
+          <div className="auth-footer">
+            <Link to="/register" className="auth-footer-link">
+              <User size={13} /> Create account
             </Link>
-          </p>
-          <p className="auth-footer-text">
-            Are you a recruiter?{' '}
-            <Link to="/recruiter/login" className="auth-link">
-              Recruiter login
+          </div>
+        )}
+        {role === 'recruiter' && (
+          <div className="auth-footer">
+            <Link to="/recruiter/register" className="auth-footer-link">
+              <Briefcase size={13} /> Register as recruiter
             </Link>
-          </p>
-        </div>
-      </div>
-
-      <div className="auth-decoration">
-        <div className="decoration-shape shape-1"></div>
-        <div className="decoration-shape shape-2"></div>
-        <div className="decoration-shape shape-3"></div>
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-export default Login;
+}

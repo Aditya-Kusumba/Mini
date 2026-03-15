@@ -1,0 +1,12 @@
+.tier-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 22px; }
+@media (max-width: 700px) { .tier-row { grid-template-columns: repeat(2,1fr); } }
+
+.tier-card { padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.tier-card.elite        { background: var(--purple-bg); border-color: var(--purple); }
+.tier-card.advanced     { background: rgba(var(--accent-rgb),.08); border-color: var(--accent); }
+.tier-card.intermediate { background: var(--green-bg); border-color: var(--green); }
+.tier-card.beginner     { background: var(--amber-bg); border-color: var(--amber); }
+.tier-card-name  { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.tier-card-count { font-family: var(--font-display); font-size: 30px; font-weight: 800; color: var(--text); }
+
+.tiers-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 16px; }

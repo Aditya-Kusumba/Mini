@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import api from "./axiosConfig";
+import axios from "axios";
 import DsaExam from './DsaExam';
 import SqlExam from './SqlExam';
 import ReactExam from './ReactExam';
@@ -16,7 +16,7 @@ export default function ExamView() {
         const fetchProblem = async () => {
             setLoading(true);
             try {
-                const { data } = await api.get(`/api/problems/${problemId}`);
+                const { data } = await axios.get(`http://localhost:5000/api/problems/${problemId}`);
                 setProblem(data.problemData);
                 setAllProblemIds(data.allProblemIds);
             } catch (error) {

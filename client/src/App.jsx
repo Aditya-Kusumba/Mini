@@ -1,80 +1,105 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider }  from './contexts/ThemeContext';
+import { AuthProvider }   from './contexts/AuthContext';
+import ProtectedRoute     from './pages/Auth/ProtectedRoute';
+import Layout             from './components/Layout/Layout';
 
-// Import Layout and Page Components
-import Layout from './Components/Layout/Layout';
-import Home from './Pages/Home/Home';
-import Login from './Pages/Auth/Login';
-import Register from './Pages/Auth/Register';
-import RecruiterRegister from './Pages/Auth/RecruiterRegister';
-import RecruiterLogin from './Pages/Auth/RecruiterLogin';
-import Dashboard from './Pages/Dashboard/Dashboard';
-import DomainSelection from './Pages/Domain/DomainSelection';
-import DomainOverview from './CandidateDomainDashboard';
-import ExamSystem from './Pages/Exam/ExamSystem';
-import ProblemLobby from './Pages/Problem/ProblemLobby';
-import ProblemView from './Pages/Problem/ProblemView';
-import RecruiterDashboard from './Pages/Recruiter/RecruiterDashboard';
-import Profile from './Pages/Profile/Profile';
-import DomainsList from './CandidateDomainDashboard'
-import UpdateDashboard from './Pages/UpdateDashboard';
-import DomainDash from './DomainDash';
-import Coderunner from './Exam/CodeRunner';
-import ExamLobby from './Exam/ExamLobby';
-import ExamView from './Exam/ExamView'
-import CreateEvent from './Exam/AdminAcess';
+// ── Auth ──
+import Login             from './pages/Auth/Login';
+import AdminLogin        from './pages/Auth/AdminLogin';
+import Register          from './pages/Auth/Register';
+import RecruiterRegister from './pages/Auth/RecruiterRegister';
+
+// ── Profile setup (after register) ──
+import ProfileSetup from './pages/Profile/ProfileSetup';
+
+// ── Candidate ──
+import Dashboard       from './pages/Dashboard/Dashboard';
+import UpdateDashboard from './pages/Dashboard/UpdateDashboard';
+import PastPerformance from './pages/Dashboard/PastPerformance';
+import DomainSelection from './pages/Domain/DomainSelection';
+import DomainDashboard from './pages/Domain/DomainDashboard';
+import ProblemLobby    from './pages/Problem/ProblemLobby';
+import ProblemView     from './pages/Problem/ProblemView';
+
+// ── Admin ──
+import AdminDashboard from './pages/Admin/AdminDashboard';
+
+// ── Recruiter ──
+import RecruiterDashboard from './pages/Recruiter/RecruiterDashboard';
+import RecCandidates      from './pages/Recruiter/RecCandidates';
+
+// ── Exam / Contest ──
+import ExamLobby    from './Exam/ExamLobby';
+import ExamView     from './Exam/ExamView';
+import Coderunner   from './Exam/CodeRunner';
+import CreateEvent  from './Exam/AdminAcess';
 import ContestLobby from './Contests/ContestLobby';
-import ContestView from './Contests/ContestView';
-import AdminLogin from './Pages/Auth/AdminLogin';
-import PastPerformance from './Pages/Dashboard/PastPerformance'
-import RecCandidates from './Pages/Recruiter/RecCandidates';
-import ProtectedRoute from './Pages/Auth/ProtectedRoute';
+import ContestView  from './Contests/ContestView';
+import examRouter   from './routes/exam.routes.jsx';
 
-import './App.css';
+import './styles/globals.css';
 
-function App() {
+export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          <div className="App">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/recruiter/login" element={<RecruiterLogin />} />
-              <Route path="/recruiter/register" element={<RecruiterRegister />} />
-              <Route path="/adminlogin" element={<AdminLogin />} />
+          <Routes>
+            {/* ── Public ── */}
+            <Route path="/"                   element={<Navigate to="/login" replace />} />
+            <Route path="/login"              element={<Login />} />
+            <Route path="/admin/login"        element={<AdminLogin />} />
+            <Route path="/register"           element={<Register />} />
+            <Route path="/recruiter/register" element={<RecruiterRegister />} />
 
-            <Route element={<ProtectedRoute/>}>
-              <Route path="/admin" element={<CreateEvent />} />
+            {/* ── Profile setup: protected but no layout (standalone page) ── */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/profile/setup" element={<ProfileSetup />} />
+              <Route path="/admin/exam-creator" element={<CreateEvent />} />
+            </Route>
+
+            {/* ── Candidate (role: CANDIDATE) ── */}
+            <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
-                <Route path="/updatedashboard" element={<UpdateDashboard />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/domain/selection" element={<DomainsList />} />
-                <Route path="/domain/:domainId" element={<DomainDash />} />
-                <Route path="/problems" element={<ProblemLobby />} />
-                <Route path="/problem/:problemId" element={<ProblemView />} />
-                <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
-                <Route path="/recruiter/candidates" element={<RecCandidates />} />
-                <Route path="/profile" element={<UpdateDashboard />} />
-                <Route path="/pastperformance" element={<PastPerformance />} />
-                <Route path="/contest/:contestId" element={<ContestView />} />
-                <Route path="/contests" element={<ContestLobby />} />
-                <Route path="/CodeRunner" element={<Coderunner/>}/>
-                <Route path="/exams" element={<ExamLobby/>}/>
-                <Route path="/exam/:problemId" element={<ExamView/>}/>
+                <Route path="/dashboard"           element={<Dashboard />} />
+                <Route path="/updatedashboard"     element={<UpdateDashboard />} />
+                <Route path="/pastperformance"     element={<PastPerformance />} />
+                <Route path="/profile"             element={<ProfileSetup />} />
+                <Route path="/domain/selection"    element={<DomainSelection />} />
+                <Route path="/domain/:domainId"    element={<DomainDashboard />} />
+                <Route path="/problems"            element={<ProblemLobby />} />
+                <Route path="/problem/:problemId"  element={<ProblemView />} />
+                <Route path="/contests"            element={<ContestLobby />} />
+                <Route path="/contest/:contestId"  element={<ContestView />} />
+                <Route path="/exams"               element={<ExamLobby />} />
+                <Route path="/exam/:problemId"     element={<ExamView />} />
+                <Route path="/CodeRunner"          element={<Coderunner />} />
               </Route>
             </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
+
+            {/* ── Admin (role: ADMIN) ── */}
+            <Route element={<ProtectedRoute adminOnly />}>
+              <Route element={<Layout />}>
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/students"  element={<AdminDashboard />} />
+                <Route path="/admin/analytics" element={<AdminDashboard />} />
+                <Route path="/admin/placement" element={<AdminDashboard />} />
+              </Route>
+            </Route>
+
+            {/* ── Recruiter (role: RECRUITER) ── */}
+            <Route element={<ProtectedRoute recruiterOnly />}>
+              <Route element={<Layout />}>
+                <Route path="/recruiter/dashboard"  element={<RecruiterDashboard />} />
+                <Route path="/recruiter/candidates" element={<RecCandidates />} />
+              </Route>
+            </Route>
+
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
         </Router>
       </AuthProvider>
     </ThemeProvider>
   );
 }
-
-export default App;

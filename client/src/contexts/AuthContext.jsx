@@ -1,94 +1,67 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import api from '../utils/api';
 
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be inside AuthProvider');
+  return ctx;
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchCurrentUser();
-  }, []);
+  useEffect(() => { fetchMe(); }, []);
 
-  const fetchCurrentUser = async () => {
+  const fetchMe = async () => {
     try {
-      const res = await api.get('/api/users/me', {
-        withCredentials: true
-      });
-      if (res.data?.success) {
-        setUser(res.data.data);
-      } else {
-        setUser(null);
-      }
-    } catch (err) {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+      const res = await api.get('/api/users/me');
+      setUser(res.data?.data || null);
+    } catch { setUser(null); }
+    finally   { setLoading(false); }
   };
 
-  const register = async (userData) => {
-    try {
-      const res = await api.post('/api/users/register', userData);
-      return res.data;
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || 'Registration failed'
-      };
-    }
+  const login = async (email, password) => {
+    const res = await api.post('/api/users/login', { email, password });
+    if (res.data?.data?.user) { setUser(res.data.data.user); return { success: true }; }
+    return { success: false, message: res.data?.message };
   };
 
-  const login = async (credentials) => {
-  try {
-    const res = await api.post('/api/users/login', credentials, {
-      withCredentials: true
-    });
-    if (res.data.success) {
-      // wait a tick for the cookie to be attached
-      await fetchCurrentUser();
-      return { success: true, user: res.data.data.user };
-    }
-    return { success: false, message: res.data.message };
-  } catch (error) {
-    return {
-      success: false,
-      message: error.response?.data?.message || 'Login failed'
-    };
-  }
-};
-
+  const register = async (payload) => {
+    const res = await api.post('/api/users/register', payload);
+    return res.data;
+  };
 
   const logout = async () => {
     try {
-      await api.post('/api/users/logout', {}, { withCredentials: true });
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
-      setUser(null);
-    }
+      if (user?.role === 'ADMIN') await api.post('/api/admin/logout');
+      else                        await api.post('/api/users/logout');
+    } catch {}
+    setUser(null);
   };
 
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    loading,
-    login,
-    logout,
-    register
+  const generateOTP = async (email) =>
+    (await api.post('/api/users/otp/generate', { email })).data;
+
+  const verifyOTP = async (email, otp) =>
+    (await api.post('/api/users/otp/verify', { email, otp })).data;
+
+  const adminLogin = async (email, password) => {
+    const res = await api.post('/api/admin/login', { email, password });
+    if (res.data?.data?.admin) {
+      setUser({ ...res.data.data.admin, role: 'ADMIN' });
+      return { success: true };
+    }
+    return { success: false, message: res.data?.message };
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{
+      user, loading, isAuthenticated: !!user,
+      login, register, logout, generateOTP, verifyOTP, adminLogin,
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );

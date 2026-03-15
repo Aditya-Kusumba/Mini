@@ -1,158 +1,79 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Eye, EyeOff, User, Lock, ArrowRight } from 'lucide-react';
 import './Auth.css';
 
-const AdminLogin = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const { login } = useAuth();
-  const { isDark } = useTheme();
+export default function AdminLogin() {
   const navigate = useNavigate();
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const { adminLogin } = useAuth();
+  const [showPw,  setShowPw]  = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
+  const [form,    setForm]    = useState({ email: '', password: '' });
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
+    e.preventDefault(); setError(''); setLoading(true);
     try {
-        if(formData.email === 'admin@tirehire.com' && formData.password==='Asdf1234')
-          navigate('/admin')
-        else {
-        setError(result.message);
-      }
-    } catch (error) {
-      setError('Login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+      const res = await adminLogin(form.email, form.password);
+      if (res?.success) navigate('/admin/dashboard');
+      else setError(res?.message || 'Invalid credentials');
+    } catch (err) { setError(err.response?.data?.message || 'Login failed'); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1 className="auth-title">Welcome Back</h1>
-          <p className="auth-subtitle">Sign in to your account to continue</p>
+    <div className="auth-root">
+      <div className="auth-brand" style={{ background: '#0f0f0d' }}>
+        <div className="auth-ring" style={{ borderColor: 'rgba(255,255,255,.05)' }} />
+        <div className="auth-brand-logo" style={{ color: 'var(--accent)' }}>Commit2Code</div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, position: 'relative', zIndex: 1 }}>
+          <ShieldCheck size={26} color="var(--accent)" />
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 12, color: '#555', fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}>
+            Admin Portal
+          </span>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
-
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email Address
-            </label>
-            <div className="input-group">
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your email"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
-            <div className="input-group">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="password-toggle"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
-
-          <div className="form-options">
-            <label className="checkbox-label">
-              <input type="checkbox" />
-              <span className="checkbox-text">Remember me</span>
-            </label>
-            <Link to="/forgot-password" className="forgot-link">
-              Forgot password?
-            </Link>
-          </div>
-
-          <button
-            type="submit"
-            className="btn btn-primary auth-btn"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <div className="spinner"></div>
-                Signing in...
-              </>
-            ) : (
-              <>
-                Sign In
-                <ArrowRight size={20} />
-              </>
-            )}
-          </button>
-        </form>
-
-        <div className="auth-footer">
-          <p className="auth-footer-text">
-            Don't have an account?{' '}
-            <Link to="/register" className="auth-link">
-              Sign up here
-            </Link>
-          </p>
-          <p className="auth-footer-text">
-            Are you a recruiter?{' '}
-            <Link to="/recruiter/login" className="auth-link">
-              Recruiter login
-            </Link>
-          </p>
-        </div>
+        <h1 className="auth-brand-headline" style={{ color: '#f0efe8' }}>Manage your<br />college panel.</h1>
+        <p className="auth-brand-sub">View analytics, assign domains, compute placement scores, and track student readiness.</p>
       </div>
 
-      <div className="auth-decoration">
-        <div className="decoration-shape shape-1"></div>
-        <div className="decoration-shape shape-2"></div>
-        <div className="decoration-shape shape-3"></div>
+      <div className="auth-panel">
+        <div className="auth-wrap">
+          <h2 className="auth-title">Admin sign in</h2>
+          <p className="auth-sub"><Link to="/login">← Back to candidate login</Link></p>
+
+          <form className="auth-form" onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label className="label">Admin email</label>
+              <div className="input-wrap">
+                <Mail className="ico" size={15} />
+                <input className="input" type="email" placeholder="admin@college.ac.in"
+                  value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="label">Password</label>
+              <div className="input-wrap">
+                <Lock className="ico" size={15} />
+                <input className="input" type={showPw ? 'text' : 'password'} placeholder="Your password"
+                  value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required />
+                <button type="button" className="input-eye" onClick={() => setShowPw(s => !s)}>
+                  {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+
+            {error && <p className="auth-error">{error}</p>}
+
+            <button type="submit" className="btn btn-primary btn-full auth-btn" disabled={loading}>
+              {loading ? <span className="loading-spinner" /> : 'Sign in to admin'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
-};
-
-export default AdminLogin;
+}

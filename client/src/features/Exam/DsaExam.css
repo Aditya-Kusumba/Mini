@@ -1,0 +1,201 @@
+/* Main layout using Flexbox for a robust, two-column scrollable view */
+.dsa-exam-layout {
+  display: flex;
+  gap: 1rem;
+  /* Occupy the full height available from the parent, minus padding and navbar height */
+  height: calc(100vh - 80px); /* Adjust 80px based on your actual header/navbar height */
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* Base styles for both left and right panels */
+.problem-panel, .editor-console-panel {
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  overflow: hidden; /* Crucial for controlling child scrolling */
+  flex-basis: 50%; /* Each panel takes up half the width */
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #dee2e6;
+  flex-shrink: 0; /* Header should not shrink or grow */
+}
+
+/* --- Left Panel (Problem Description) --- */
+.tab-navigation button {
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #6c757d;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab-navigation button.active {
+  color: #0d6efd;
+  border-bottom-color: #0d6efd;
+}
+
+.problem-nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.nav-arrow {
+  text-decoration: none;
+  color: #0d6efd;
+  font-weight: 500;
+}
+
+/* This makes the main content area of the left panel scrollable */
+.tab-content {
+  padding: 1.5rem;
+  overflow-y: auto; /* Show a scrollbar only when needed */
+  color: #343a40;
+}
+
+.problem-title-main {
+  margin-top: 0;
+  color: #212529;
+}
+
+.problem-section {
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.io-box {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+    font-family: monospace;
+}
+
+.io-label {
+    font-weight: bold;
+    color: #6c757d;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+
+/* --- Right Panel (Editor & Console) --- */
+.editor-console-panel {
+  background-color: #1e1e1e; /* Match editor theme */
+  color: #d4d4d4;
+}
+
+.editor-settings {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.language-select {
+  background-color: #252526;
+  color: #d4d4d4;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+/* This container allows the editor to grow and fill available space */
+.editor-container {
+  flex-grow: 1;
+  overflow: hidden; /* The editor itself handles internal scrolling */
+}
+
+.custom-test-console {
+  display: flex;
+  flex-direction: column;
+  height: 150px; /* Give the console a fixed height */
+  border-top: 1px solid #333;
+  padding: 0.5rem;
+  flex-shrink: 0;
+}
+
+.custom-input-textarea {
+  flex-grow: 1;
+  background-color: #252526;
+  color: #d4d4d4;
+  border: none;
+  padding: 0.5rem;
+  resize: none;
+  outline: none;
+  font-family: monospace;
+}
+
+.console-output-box {
+  background-color: #1e1e1e;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  border-radius: 4px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.console-output-box pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.error-output { color: #f48771; }
+.success-output { color: #83ba76; }
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background-color: #252526;
+  border-top: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.run-btn, .submit-btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.run-btn { background-color: #4a4a4a; color: white; }
+.submit-btn { background-color: #2c6e2f; color: white; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.final-result-panel {
+  padding: 1rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+.accepted { background-color: #2c6e2f; color: #d1e7dd; }
+.failed { background-color: #842029; color: #f8d7da; }
+
+.final-result-panel h3 { margin: 0 0 0.5rem 0; }
+.result-details { font-family: monospace; font-size: 0.9rem; margin: 0; }
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-size: 1.2rem;
+}
+

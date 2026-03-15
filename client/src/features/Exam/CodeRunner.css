@@ -1,0 +1,155 @@
+/* src/Coderunner.css */
+.coderunner-container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #1a1a1a;
+  color: #f0f0f0;
+}
+
+.coderunner-header {
+  text-align: center;
+  padding: 1rem;
+  background-color: #242424;
+  border-bottom: 1px solid #333;
+}
+
+.coderunner-header h1 {
+  margin: 0 0 1rem 0;
+  color: #61dafb;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.controls label {
+  font-size: 1.1rem;
+}
+
+.controls select {
+  padding: 8px 12px;
+  background-color: #333;
+  color: #f0f0f0;
+  border: 1px solid #555;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.editor-container {
+  flex-grow: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.monaco-wrapper {
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-grow: 1;
+  display: flex;
+}
+
+.run-btn {
+  margin: 1rem 0;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #61dafb;
+  color: #1a1a1a;
+  border: none;
+  font-size: 1rem;
+  font-weight: bold;
+  align-self: flex-start;
+}
+
+.run-btn:disabled {
+  background: #444;
+  cursor: not-allowed;
+}
+
+.output-container {
+  margin-top: 1rem;
+}
+
+.output-box {
+  background: #0d0d0d;
+  color: #00ff41;
+  padding: 15px;
+  border-radius: 8px;
+  min-height: 120px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* IDE Styles */
+.ide-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.add-file-controls {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  background-color: #242424;
+  border-bottom: 1px solid #333;
+}
+
+.add-file-controls input {
+  flex-grow: 1;
+  background-color: #333;
+  color: #f0f0f0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.add-file-controls button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  background-color: #61dafb;
+  color: #1a1a1a;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* SQL Runner Styles */
+.sql-output-box {
+  background: #2d2d2d;
+  padding: 15px;
+  border-radius: 8px;
+  min-height: 120px;
+  font-family: 'Courier New', Courier, monospace;
+  overflow: auto;
+}
+
+.sql-error {
+  color: #ff5555;
+  white-space: pre-wrap;
+}
+
+.sql-output-box table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #f0f0f0;
+}
+
+.sql-output-box th, .sql-output-box td {
+  border: 1px solid #555;
+  padding: 8px;
+  text-align: left;
+}
+
+.sql-output-box th {
+  background-color: #444;
+}

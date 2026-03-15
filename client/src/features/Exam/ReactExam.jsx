@@ -8,7 +8,7 @@ import {
     SandpackFileExplorer,
     useSandpack,
 } from "@codesandbox/sandpack-react";
-import api from "./axiosConfig";
+import axios from "axios";
 
 // A component that handles the testing logic from within the Sandpack context
 const TestRunner = ({ problem, onTestComplete }) => {
@@ -83,7 +83,7 @@ export default function ReactExam({ problem, allProblemIds }) {
         setTestReport(report);
         const status = report.score === 100 ? 'Accepted' : 'Wrong Answer';
         try {
-            await api.post('/api/submit/react-client', {
+            await axios.post('http://localhost:5000/api/submit/react-client', {
                 problemId,
                 score: report.score,
                 status: status,
@@ -98,7 +98,7 @@ export default function ReactExam({ problem, allProblemIds }) {
     const fetchSubmissions = async (forceRefresh = false) => {
         if (submissions.length > 0 && !forceRefresh) return;
         try {
-            const { data } = await api.get(`/api/submissions/${problemId}`);
+            const { data } = await axios.get(`http://localhost:5000/api/submissions/${problemId}`);
             setSubmissions(data);
         } catch (error) {
             console.error("❌ Failed to fetch submissions", error);

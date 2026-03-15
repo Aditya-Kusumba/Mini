@@ -1,226 +1,133 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { Globe, Target, Zap, BarChart3, ArrowRight, Code2, Trophy } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  Trophy, 
-  Target, 
-  Code, 
-  TrendingUp, 
-  Calendar,
-  Award,
-  ArrowRight,
-  BarChart3,
-  CheckCircle
-} from 'lucide-react';
+import api from '../../utils/api';
 import './Dashboard.css';
 
-const Dashboard = () => {
+const EMOJI = { Frontend: '🌐', Backend: '⚙️', AIML: '🤖', DSA: '🧩' };
+
+const hour = new Date().getHours();
+const GREET = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+export default function Dashboard() {
   const { user } = useAuth();
-  const [performance, setPerformance] = useState(0);
-  // State for general dashboard stats
-  const [stats, setStats] = useState({
-    totalProblems: 0,
-    solvedProblems: 0,
-    contestsParticipated: 0
-  });
-  
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [upcomingContests, setUpcomingContests] = useState([]);
-  const [selectedDomains, setSelectedDomains] = useState([]);
-  const [domainsLoading, setDomainsLoading] = useState(true);
-  const [domainsError, setDomainsError] = useState(null);
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData();
-    fetchSelectedDomains();
+    api.get('/api/v1/candidate/dashboard')
+      .then(r => setData(r.data?.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  const fetchDashboardData = async () => {
-    try {
-      const response = await axios.get('/api/users/getstats', { withCredentials: true });
-      const { problems, contests } = response.data;
-      setStats({
-        totalProblems: 150,
-        solvedProblems: problems,
-        contestsParticipated: contests,
-      });
+  if (loading) return <div className="page-loading"><span className="loading-spinner" /> Loading…</div>;
 
-      const performance = Math.round(((problems / 150) * 100 + contests * 3.2) * 100) / 100;
-      setPerformance(performance);
-
-      setRecentActivity([
-        // { id: 1, type: 'problem_solved', title: 'Two Sum', points: 10, time: '2 hours ago' },
-        // { id: 2, type: 'contest_joined', title: 'Weekly Coding Contest', points: 150, time: '1 day ago' },
-        // { id: 3, type: 'tier_upgraded', title: 'Moved to Silver Tier', points: 0, time: '3 days ago' }
-      ]);
-
-      setUpcomingContests([
-        { id: 1, title: 'Weekly Coding Contest', date: 'Tomorrow', time: '2:00 PM' },
-        { id: 2, title: 'DSA Challenge', date: 'Friday', time: '6:00 PM' }
-      ]);
-
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-    }
-  };
-
-  const fetchSelectedDomains = async () => {
-    try {
-      setDomainsLoading(true);
-      const response = await axios.get('/api/domains/domains', {withCredentials : true});
-      const result = await response.data;
-      setSelectedDomains(result.data);
-    } catch (err) {
-      setDomainsError(err.message);
-    } finally {
-      setDomainsLoading(false);
-    }
-  };
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
-  const statCards = [
-    { icon: Code, title: 'Problems Solved', value: stats.solvedProblems, total: stats.totalProblems, link: '/problems' },
-    { icon: Calendar, title: 'Contests Joined', value: stats.contestsParticipated, link: '/contests' },
-    { icon: BarChart3, title: 'Performance', value: `${performance}%` }
-  ];
+  const s       = data?.stats    || {};
+  const domains = data?.domains  || [];
 
   return (
-    <div className="dashboard">
-      <div className="dashboard-header">
-        <div className="welcome-section">
-          <h1 className="dashboard-title">
-            {getGreeting()}, {user?.username}! 👋
-          </h1>
-          <p className="dashboard-subtitle">
-            Ready to tackle some coding challenges today?
-          </p>
-        </div>
-        <div className="dashboard-actions">
-          <Link to="/problems" className="btn btn-primary">
-            Start Coding <ArrowRight size={16} />
-          </Link>
-        </div>
+    <div className="fade-up">
+      <div className="page-header">
+        <h1 className="page-title">{GREET}, {user?.fullName?.split(' ')[0] || user?.username} 👋</h1>
+        <p className="page-sub">Here's your learning progress at a glance.</p>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats */}
       <div className="stats-grid">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <Link key={index} to={stat.link} className="stat-card card">
-              <div className="stat-icon"><Icon size={24} /></div>
-              <div className="stat-content">
-                <h3 className="stat-title">{stat.title}</h3>
-                <p className="stat-value">{stat.value}</p>
-                {stat.total && <p className="stat-total">out of {stat.total}</p>}
-              </div>
-              <ArrowRight size={16} className="stat-arrow" />
-            </Link>
-          );
-        })}
+        {[
+          { label: 'Domains enrolled',  value: s.domainsEnrolled  ?? 0,         icon: Globe,     color: '#2d4aff', bg: 'rgba(45,74,255,.1)' },
+          { label: 'Topics started',    value: s.topicsStarted    ?? 0,         icon: Target,    color: '#16a34a', bg: '#dcfce7' },
+          { label: 'Topics attempted',  value: s.topicsAttempted  ?? 0,         icon: Zap,       color: '#d97706', bg: '#fef3c7' },
+          { label: 'Avg score',         value: `${s.avgScore      ?? '0.00'}%`, icon: BarChart3, color: '#7c3aed', bg: '#ede9fe' },
+        ].map(({ label, value, icon: Icon, color, bg }) => (
+          <div key={label} className="stat-card">
+            <div className="stat-icon" style={{ background: bg }}><Icon size={17} color={color} /></div>
+            <div className="stat-label">{label}</div>
+            <div className="stat-value">{value}</div>
+          </div>
+        ))}
       </div>
 
-      <div className="dashboard-content">
-        {/* Recent Activity */}
-        <div className="dashboard-section">
-          <div className="section-header">
-            <h2 className="section-title" style={{color : 'red'}}>Recent Activity</h2>
-            <Link to="/profile" className="section-link">View All <ArrowRight size={16} /></Link>
-          </div>
-          <div className="activity-list">
-            {recentActivity.map((activity) => (
-              <div key={activity.id} className="activity-item">
-                <div className="activity-icon">
-                  {activity.type === 'problem_solved' && <CheckCircle size={20} />}
-                  {activity.type === 'contest_joined' && <Trophy size={20} />}
-                  {activity.type === 'tier_upgraded' && <Award size={20} />}
-                </div>
-                <div className="activity-content">
-                  <h4 className="activity-title">{activity.title}</h4>
-                  <p className="activity-time">{activity.time}</p>
-                </div>
-                {activity.points > 0 && <div className="activity-points">+{activity.points}</div>}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Upcoming Contests */}
-        <div className="dashboard-section">
-          <div className="section-header">
-            <h2 className="section-title" style={{color : 'red'}}>Upcoming Contests</h2>
-            <Link to="/contests" className="section-link">View All <ArrowRight size={16} /></Link>
-          </div>
-          <div className="contest-list">
-            {upcomingContests.map((contest) => (
-              <div key={contest.id} className="contest-item card">
-                <div className="contest-icon"><Calendar size={20} /></div>
-                <div className="contest-content">
-                  <h4 className="contest-title">{contest.title}</h4>
-                  <p className="contest-time">{contest.date} at {contest.time}</p>
-                </div>
-                <button className="btn btn-secondary btn-sm">Join</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="dashboard-section">
+      {/* Enrolled domains */}
+      <div style={{ marginBottom: 28 }}>
         <div className="section-header">
-          <h2 className="section-title" style={{color : 'red'}}>Selected Domains</h2>
-          <Link to="/domain/selection" className="section-link">
-            Manage Domains <ArrowRight size={16} />
-          </Link>
+          <span className="section-title">Your domains</span>
+          <Link to="/domain/selection" className="section-link">Manage →</Link>
         </div>
 
-        {domainsLoading && <p>Loading your domains...</p>}
-        
-        {domainsError && <p className="error-text">Error: {domainsError}</p>}
-
-        {!domainsLoading && !domainsError && (
-          <div className="domains-grid">
-            {selectedDomains.length > 0 ? (
-              selectedDomains.map(domain => (
-                <div key={domain.domain_id} className="domain-card card">
-                  <div className="domain-card-header">
-                    <Target size={20} />
-                    <h3 className="domain-card-title">{domain.domain_name}</h3>
-                  </div>
-                  <div className="domain-card-stats">
-                    <div className="stat-item">
-                      <span className="stat-label">Tier</span>
-                      <span className="stat-value tier">{domain.tier_name}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Rank</span>
-                      <span className="stat-value">#{domain.current_rank}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Score</span>
-                      <span className="stat-value">{domain.rating}</span>
-                    </div>
-                  </div>
-                  <Link to={`/domain/${domain.domain_id}`} className="btn btn-secondary btn-block">
-                    View Dashboard <ArrowRight size={16} />
-                  </Link>
+        {domains.length === 0 ? (
+          <div className="card empty-state">
+            <p style={{ marginBottom: 14 }}>You haven't enrolled in any domains yet.</p>
+            <Link to="/domain/selection" className="btn btn-primary">Choose domains</Link>
+          </div>
+        ) : (
+          <div className="domain-cards">
+            {domains.map(d => (
+              <div key={d.id} className="domain-card card">
+                <div className="dc-head">
+                  <span className="dc-emoji">{EMOJI[d.name] || '📚'}</span>
+                  <span className="dc-name">{d.name}</span>
+                  {d.tier && <span className="badge badge-blue">{d.tier}</span>}
                 </div>
-              ))
-            ) : (
-              <p>You haven't selected any domains yet. Choose a domain to start competing!</p>
-            )}
+                <div className="dc-stats">
+                  <div className="dc-stat">
+                    <span className="stat-label">Score</span>
+                    <strong>{d.score ?? 0}</strong>
+                  </div>
+                  {d.rank && (
+                    <div className="dc-stat">
+                      <span className="stat-label">Rank</span>
+                      <strong>#{d.rank}</strong>
+                    </div>
+                  )}
+                </div>
+                <Link to={`/domain/${d.id}`} className="btn btn-secondary btn-sm btn-full">
+                  Open dashboard <ArrowRight size={13} />
+                </Link>
+              </div>
+            ))}
           </div>
         )}
       </div>
+
+      {/* Quick links + recent activity */}
+      <div className="two-col">
+        <div className="card" style={{ padding: 20 }}>
+          <div className="section-title" style={{ marginBottom: 14 }}>Quick actions</div>
+          {[
+            { label: 'Solve a problem',   to: '/problems',        icon: Code2 },
+            { label: 'Join a contest',    to: '/contests',        icon: Trophy },
+            { label: 'View performance',  to: '/pastperformance', icon: BarChart3 },
+            { label: 'Update profile',    to: '/profile',         icon: Target },
+          ].map(({ label, to, icon: Icon }) => (
+            <Link key={to} to={to} className="qa-item">
+              <Icon size={14} color="var(--accent)" />
+              <span>{label}</span>
+              <ArrowRight size={12} color="var(--text-3)" style={{ marginLeft: 'auto' }} />
+            </Link>
+          ))}
+        </div>
+
+        <div className="card" style={{ padding: 20 }}>
+          <div className="section-title" style={{ marginBottom: 14 }}>Recent activity</div>
+          {(data?.recentActivity || []).length === 0 ? (
+            <div className="empty-state" style={{ padding: 24 }}>
+              <p>No recent activity yet.</p>
+              <p style={{ marginTop: 6, fontSize: 12 }}>Start solving problems to see history here.</p>
+            </div>
+          ) : (
+            (data?.recentActivity || []).slice(0, 6).map((a, i) => (
+              <div key={i} className="act-item">
+                <div className="act-dot" />
+                <span className="act-text">{a.title || a.domain_name || 'Activity'}</span>
+                {a.score && <span className="act-meta">{a.score}pts</span>}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
-};
-
-export default Dashboard;
+}

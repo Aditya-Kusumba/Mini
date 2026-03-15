@@ -34,7 +34,7 @@ const Navbar = () => {
         {/* Logo */}
         <Link to="/" className="navbar-logo">
           <div className="logo-icon">
-            <span className="logo-text">TierHire</span>
+            <span className="logo-text">Commit2Code</span>
           </div>
         </Link>
         {/* Right side actions */}

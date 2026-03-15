@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import api from './axiosConfig';
+import axios from 'axios';
 import './ExamLobby.css';
 
 export default function ExamLobby() {
@@ -11,7 +11,7 @@ export default function ExamLobby() {
     useEffect(() => {
         const fetchProblems = async () => {
             try {
-                const response = await api.get('/api/problems');
+                const response = await axios.get('http://localhost:5000/api/problems');
                 setProblems(response.data);
             } catch (err) {
                 setError('Failed to load problems. Is the backend server running?');
