@@ -1,269 +1,152 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { Eye, EyeOff, User, Mail, Lock, Building2, UserCheck } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Briefcase, Building2, AlertCircle, UserCircle, ShieldCheck } from 'lucide-react';
+import api from '../../utils/api';
 import './Auth.css';
 
-const RecruiterRegister = () => {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    username: '',
-    email: '',
-    companyname: '',
-    password: '',
-    confirmPassword: '',
-    role: 'RECRUITER'
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+export default function RecruiterRegister() {
+  const navigate  = useNavigate();
+  const [showPw,  setShowPw]  = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error,   setError]   = useState('');
+  const [form,    setForm]    = useState({
+    fullName: '', username: '', email: '', company: '', password: '',
+  });
 
-  const { register } = useAuth();
-  const navigate = useNavigate();
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setLoading(false);
-      return;
-    }
-
+    setError(''); setLoading(true);
     try {
-      const result = await register(formData);
-      if (result.success) {
-        navigate('/recruiter/login', { 
-          state: { message: 'Registration successful! Please login to continue.' }
-        });
+      const res = await api.post('/api/users/register', {
+        name:        form.fullName,
+        username:    form.username,
+        email:       form.email,
+        password:    form.password,
+        role:        'RECRUITER',
+        companyname: form.company,
+      });
+      if (res.data?.success !== false) {
+        navigate('/login');
       } else {
-        setError(result.message);
+        setError(res.data?.message || 'Registration failed');
       }
-    } catch (error) {
-      setError('Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Something went wrong');
+    } finally { setLoading(false); }
   };
 
+  const TABS = [
+    { key: 'candidate', label: 'Candidate', icon: UserCircle,  to: '/register' },
+    { key: 'admin',     label: 'Admin',     icon: ShieldCheck,  to: '/login' },
+    { key: 'recruiter', label: 'Recruiter', icon: Briefcase,    to: null },
+  ];
+
   return (
-    <div className="auth-container">
+    <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-header">
-          <div className="auth-icon">
-            <Building2 size={32} />
+        {/* Logo */}
+        <Link to="/" className="auth-logo">
+          <div className="auth-logo-mark">
+            <svg viewBox="0 0 18 18" fill="none">
+              <path d="M2 14L9 4l7 10H2z" fill="white" opacity=".9"/>
+              <circle cx="9" cy="12" r="2.5" fill="white"/>
+            </svg>
           </div>
-          <h1 className="auth-title">Recruiter Registration</h1>
-          <p className="auth-subtitle">Join as a recruiter and find top talent</p>
+          <span className="auth-logo-name">Commit2Code</span>
+        </Link>
+
+        {/* Role tabs */}
+        <div className="auth-role-tabs">
+          {TABS.map(({ key, label, icon: Icon, to }) => (
+            <button
+              key={key}
+              className={`auth-role-tab${key === 'recruiter' ? ' active' : ''}`}
+              onClick={() => to && navigate(to)}
+            >
+              <Icon size={12} /> {label}
+            </button>
+          ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <h1 className="auth-heading">Create recruiter account</h1>
+        <p className="auth-desc">
+          Already have one? <Link to="/login">Sign in →</Link>
+        </p>
+
+        <form className="auth-form" onSubmit={handleSubmit}>
+          {/* Full name */}
+          <div className="field">
+            <label className="field-label">Full name</label>
+            <div className="field-input-wrap">
+              <span className="field-ico"><User size={14} /></span>
+              <input className="field-input" placeholder="Jane Smith"
+                value={form.fullName} onChange={e => set('fullName', e.target.value)}
+                autoComplete="name" required />
+            </div>
+          </div>
+
+          {/* Username */}
+          <div className="field">
+            <label className="field-label">Username</label>
+            <div className="field-input-wrap">
+              <span className="field-ico"><User size={14} /></span>
+              <input className="field-input" placeholder="jane_smith"
+                value={form.username}
+                onChange={e => set('username', e.target.value.toLowerCase().replace(/\s/g, '_'))}
+                autoComplete="username" required />
+            </div>
+          </div>
+
+          {/* Company */}
+          <div className="field">
+            <label className="field-label">Company name</label>
+            <div className="field-input-wrap">
+              <span className="field-ico"><Building2 size={14} /></span>
+              <input className="field-input" placeholder="Acme Corp"
+                value={form.company} onChange={e => set('company', e.target.value)}
+                required />
+            </div>
+          </div>
+
+          {/* Email */}
+          <div className="field">
+            <label className="field-label">Work email</label>
+            <div className="field-input-wrap">
+              <span className="field-ico"><Mail size={14} /></span>
+              <input className="field-input" type="email" placeholder="jane@acme.com"
+                value={form.email} onChange={e => set('email', e.target.value)}
+                autoComplete="email" required />
+            </div>
+          </div>
+
+          {/* Password */}
+          <div className="field">
+            <label className="field-label">Password</label>
+            <div className="field-input-wrap">
+              <span className="field-ico"><Lock size={14} /></span>
+              <input className="field-input" type={showPw ? 'text' : 'password'}
+                placeholder="Min 8 characters"
+                value={form.password} onChange={e => set('password', e.target.value)}
+                autoComplete="new-password" required minLength={8} />
+              <button type="button" className="field-eye" onClick={() => setShowPw(s => !s)}>
+                {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+          </div>
+
           {error && (
-            <div className="error-message">
-              {error}
+            <div className="auth-banner error">
+              <AlertCircle size={14} /> {error}
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="fullName" className="form-label">
-              Full Name
-            </label>
-            <div className="input-group">
-              <User size={20} className="input-icon" />
-              <input
-                type="text"
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your full name"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="username" className="form-label">
-              Username
-            </label>
-            <div className="input-group">
-              <UserCheck size={20} className="input-icon" />
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Choose a username"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email Address
-            </label>
-            <div className="input-group">
-              <Mail size={20} className="input-icon" />
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your email"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="companyname" className="form-label">
-              Company Name
-            </label>
-            <div className="input-group">
-              <Building2 size={20} className="input-icon" />
-              <input
-                type="text"
-                id="companyname"
-                name="companyname"
-                value={formData.companyname}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Enter your company name"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
-            <div className="input-group">
-              <Lock size={20} className="input-icon" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Create a password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="password-toggle"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmPassword" className="form-label">
-              Confirm Password
-            </label>
-            <div className="input-group">
-              <Lock size={20} className="input-icon" />
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="form-input"
-                placeholder="Confirm your password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="password-toggle"
-              >
-                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input type="checkbox" required />
-              <span className="checkbox-text">
-                I agree to the{' '}
-                <Link to="/terms" className="auth-link">
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link to="/privacy" className="auth-link">
-                  Privacy Policy
-                </Link>
-              </span>
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            className="btn btn-primary auth-btn"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <div className="spinner"></div>
-                Creating account...
-              </>
-            ) : (
-              'Create Account'
-            )}
+          <button type="submit" className="auth-submit" disabled={loading}>
+            {loading ? <span className="btn-spinner" /> : 'Create recruiter account'}
           </button>
         </form>
-
-        <div className="auth-footer">
-          <p className="auth-footer-text">
-            Already have an account?{' '}
-            <Link to="/recruiter/login" className="auth-link">
-              Sign in here
-            </Link>
-          </p>
-          <p className="auth-footer-text">
-            Are you a candidate?{' '}
-            <Link to="/register" className="auth-link">
-              Candidate registration
-            </Link>
-          </p>
-        </div>
-      </div>
-
-      <div className="auth-decoration">
-        <div className="decoration-shape shape-1"></div>
-        <div className="decoration-shape shape-2"></div>
-        <div className="decoration-shape shape-3"></div>
       </div>
     </div>
   );
-};
-
-export default RecruiterRegister;
+}

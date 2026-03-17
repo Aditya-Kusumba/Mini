@@ -9,23 +9,44 @@ export const useAuth = () => {
   return ctx;
 };
 
-export const AuthProvider = ({ children }) => {
-  const [user,    setUser]    = useState(null);
-  const [loading, setLoading] = useState(true);
+const PUBLIC = ['/', '/home', '/login', '/register', '/recruiter/register', '/recruiter/login'];
 
-  useEffect(() => { fetchMe(); }, []);
+const isPublic = () =>
+  PUBLIC.some(p =>
+    window.location.pathname === p ||
+    window.location.pathname.startsWith(p === '/' ? '/home' : p)
+  );
+
+export const AuthProvider = ({ children }) => {
+  // On public pages start with loading=false so page renders immediately
+  const [user,    setUser]    = useState(null);
+  const [loading, setLoading] = useState(!isPublic());
+
+  useEffect(() => {
+    if (isPublic()) {
+      setLoading(false); // already false but be explicit
+      return;            // skip /me call entirely on public pages
+    }
+    fetchMe();
+  }, []);
 
   const fetchMe = async () => {
     try {
       const res = await api.get('/api/users/me');
       setUser(res.data?.data || null);
-    } catch { setUser(null); }
-    finally   { setLoading(false); }
+    } catch {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const login = async (email, password) => {
     const res = await api.post('/api/users/login', { email, password });
-    if (res.data?.data?.user) { setUser(res.data.data.user); return { success: true }; }
+    if (res.data?.data?.user) {
+      setUser(res.data.data.user);
+      return { success: true };
+    }
     return { success: false, message: res.data?.message };
   };
 
@@ -59,8 +80,10 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{
-      user, loading, isAuthenticated: !!user,
-      login, register, logout, generateOTP, verifyOTP, adminLogin,
+      user, loading,
+      isAuthenticated: !!user,
+      login, register, logout,
+      generateOTP, verifyOTP, adminLogin,
     }}>
       {!loading && children}
     </AuthContext.Provider>

@@ -3,6 +3,7 @@ import { ThemeProvider }  from './contexts/ThemeContext';
 import { AuthProvider }   from './contexts/AuthContext';
 import ProtectedRoute     from './pages/Auth/ProtectedRoute';
 import Layout             from './components/Layout/Layout';
+import Home               from './pages/Home/Home';
 
 // ── Auth ──
 import Login             from './pages/Auth/Login';
@@ -36,7 +37,6 @@ import Coderunner   from './Exam/CodeRunner';
 import CreateEvent  from './Exam/AdminAcess';
 import ContestLobby from './Contests/ContestLobby';
 import ContestView  from './Contests/ContestView';
-import examRouter   from './routes/exam.routes.jsx';
 
 import './styles/globals.css';
 
@@ -47,11 +47,12 @@ export default function App() {
         <Router>
           <Routes>
             {/* ── Public ── */}
-            <Route path="/"                   element={<Navigate to="/login" replace />} />
+            <Route path="/"                   element={<Navigate to="/home" replace />} />
             <Route path="/login"              element={<Login />} />
             <Route path="/admin/login"        element={<AdminLogin />} />
             <Route path="/register"           element={<Register />} />
             <Route path="/recruiter/register" element={<RecruiterRegister />} />
+            <Route path="/home"               element={<Home />} />
 
             {/* ── Profile setup: protected but no layout (standalone page) ── */}
             <Route element={<ProtectedRoute />}>
