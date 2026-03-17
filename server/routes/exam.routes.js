@@ -1,26 +1,21 @@
-import { Router }     from 'express';
-import { verifyJWT }  from '../middlewares/auth.js';
+import { Router }   from 'express';
+import { verifyJWT } from '../middlewares/auth.js';
 import {
-  seedProblems, getLanguages,
-  listProblems, getProblem,
-  runCode, submitCode,
-  mySubmissions, leaderboard,
+  seedProblems, listProblems, getProblem,
+  runCode, submitCode, mySubmissions,
 } from '../controllers/exam.controller.js';
 
 const router = Router();
 
-// No auth — seed and language list
-router.post('/seed',     seedProblems);
-router.get('/languages', getLanguages);
+// open (no auth) — seed once during dev
+router.post('/seed', seedProblems);
 
-// Auth required
+// auth required
 router.use(verifyJWT);
-
-router.get('/problems',               listProblems);   // ?domainId=1
+router.get('/problems',               listProblems);
 router.get('/problems/:problemId',    getProblem);
-router.post('/run',                   runCode);        // { code, language, problemId }
-router.post('/submit',                submitCode);     // { code, language, problemId }
+router.post('/run',                   runCode);
+router.post('/submit',                submitCode);
 router.get('/submissions/:problemId', mySubmissions);
-router.get('/leaderboard/:problemId', leaderboard);
 
 export default router;

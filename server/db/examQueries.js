@@ -1,22 +1,22 @@
 import { query } from '../db.js';
 
-// ── Get all problems ──────────────────────────────────────────
+// ── Get all problems (for lobby) ─────────────────────────────
 export const getAllProblems = async (domainId = null) => {
   const result = await query(
-    `SELECT p.id, p.title, p.difficulty,
-            p."domainId", p."topicId", p."createdAt",
-            d."domainName", t."topicName"
+    `SELECT p.id, p.title, p.difficulty, p."domainId", p."createdAt",
+            d."domainName"
      FROM "Problems" p
      LEFT JOIN "Domains" d ON p."domainId" = d.id
-     LEFT JOIN "Topics"  t ON p."topicId"  = t.id
      ${domainId ? 'WHERE p."domainId" = $1' : ''}
-     ORDER BY CASE p.difficulty WHEN 'Easy' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END, p."createdAt" ASC`,
+     ORDER BY
+       CASE p.difficulty WHEN 'Easy' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END,
+       p."createdAt" ASC`,
     domainId ? [domainId] : []
   );
   return result.rows;
 };
 
-// ── Get problem + sample test cases ──────────────────────────
+// ── Get single problem + sample test cases (safe for client) ─
 export const getProblemById = async (problemId) => {
   const pRes = await query(
     `SELECT p.id, p.title, p.description, p.difficulty,
@@ -32,20 +32,19 @@ export const getProblemById = async (problemId) => {
 
   const tcRes = await query(
     `SELECT id, input, expected_output, is_sample, points
-     FROM "Test_Cases" WHERE "problemId" = $1 ORDER BY is_sample DESC, id ASC`,
+     FROM "Test_Cases" WHERE "problemId" = $1
+     ORDER BY is_sample DESC, id ASC`,
     [problemId]
   );
 
-  const problem         = pRes.rows[0];
-  problem.testCases     = tcRes.rows;
+  const problem           = pRes.rows[0];
   problem.sampleTestCases = tcRes.rows.filter(t => t.is_sample);
   problem.totalTestCases  = tcRes.rows.length;
   problem.totalPoints     = tcRes.rows.reduce((s, t) => s + (t.points || 10), 0);
-
   return problem;
 };
 
-// ── Get ALL test cases (server only) ─────────────────────────
+// ── Get ALL test cases (server only — used for submit) ────────
 export const getAllTestCases = async (problemId) => {
   const result = await query(
     `SELECT id, input, expected_output, is_sample, points
@@ -55,8 +54,10 @@ export const getAllTestCases = async (problemId) => {
   return result.rows;
 };
 
-// ── Save submission ───────────────────────────────────────────
-export const saveSubmission = async ({ candidateId, problemId, language, code, status, score, results }) => {
+// ── Save a submission ─────────────────────────────────────────
+export const saveSubmission = async ({
+  candidateId, problemId, language, code, status, score, results,
+}) => {
   const r = await query(
     `INSERT INTO "Code_Submissions"
        ("candidateId","problemId",language,code,status,score,results,"submittedAt")
@@ -68,88 +69,50 @@ export const saveSubmission = async ({ candidateId, problemId, language, code, s
     `INSERT INTO "Problem_Submissions" ("candidateId","problemId",status,"solvedAt","attemptCount")
      VALUES ($1,$2,$3,NOW(),1)
      ON CONFLICT ("candidateId","problemId") DO UPDATE SET
-       status        = CASE WHEN EXCLUDED.status='Solved' THEN 'Solved' ELSE "Problem_Submissions".status END,
+       status        = CASE WHEN EXCLUDED.status='Solved'
+                            THEN 'Solved'
+                            ELSE "Problem_Submissions".status END,
        "attemptCount"= "Problem_Submissions"."attemptCount" + 1,
-       "solvedAt"    = CASE WHEN EXCLUDED.status='Solved' THEN NOW() ELSE "Problem_Submissions"."solvedAt" END`,
+       "solvedAt"    = CASE WHEN EXCLUDED.status='Solved'
+                            THEN NOW()
+                            ELSE "Problem_Submissions"."solvedAt" END`,
     [candidateId, problemId, status]
   );
   return r.rows[0];
 };
 
-// ── Candidate submissions for one problem ─────────────────────
+// ── Get candidate's past submissions for one problem ──────────
 export const getCandidateSubmissions = async (candidateId, problemId) => {
   const r = await query(
     `SELECT id, language, status, score, "submittedAt"
      FROM "Code_Submissions"
      WHERE "candidateId"=$1 AND "problemId"=$2
-     ORDER BY "submittedAt" DESC LIMIT 10`,
+     ORDER BY "submittedAt" DESC LIMIT 15`,
     [candidateId, problemId]
   );
   return r.rows;
 };
 
-// ── Problem leaderboard ───────────────────────────────────────
-export const getProblemLeaderboard = async (problemId) => {
-  const r = await query(
-    `SELECT c.id, c.username, c."fullName",
-            MAX(cs.score) AS best_score,
-            MIN(CASE WHEN cs.status='Solved' THEN cs."submittedAt" END) AS first_solved,
-            COUNT(*) AS attempts,
-            (SELECT language FROM "Code_Submissions"
-             WHERE "candidateId"=c.id AND "problemId"=$1
-             ORDER BY score DESC LIMIT 1) AS language
-     FROM "Code_Submissions" cs
-     JOIN "Candidates" c ON cs."candidateId"=c.id
-     WHERE cs."problemId"=$1
-     GROUP BY c.id, c.username, c."fullName"
-     ORDER BY best_score DESC, first_solved ASC
-     LIMIT 50`,
-    [problemId]
-  );
-  return r.rows;
-};
-
-// ── Seed 5 dummy problems ─────────────────────────────────────
+// ── Seed 6 dummy problems with test cases ─────────────────────
 export const seedDummyProblems = async () => {
   const existing = await query(`SELECT COUNT(*) FROM "Problems"`);
-  if (parseInt(existing.rows[0].count) > 5) return { message: 'Already seeded' };
+  if (parseInt(existing.rows[0].count) > 0)
+    return { message: 'Already seeded — problems exist' };
 
-  // Get first domain id
   const domRes = await query(`SELECT id FROM "Domains" LIMIT 1`);
   const domainId = domRes.rows[0]?.id || 1;
 
   const PROBLEMS = [
     {
-      title: 'Two Sum',
-      difficulty: 'Easy',
-      description: `Given an array of integers and a target, return the indices of the two numbers that add up to the target.
-
-Input format (2 lines):
-Line 1: space-separated integers
-Line 2: target integer
-
-Output: space-separated indices (e.g. "0 1")
-
-Example:
-Input:
-2 7 11 15
-9
-Output: 0 1`,
-      testCases: [
-        { input: '2 7 11 15\n9',   expected: '0 1',  sample: true,  pts: 20 },
-        { input: '3 2 4\n6',       expected: '1 2',  sample: true,  pts: 20 },
-        { input: '3 3\n6',         expected: '0 1',  sample: false, pts: 30 },
-        { input: '1 2 3 4 5\n9',   expected: '3 4',  sample: false, pts: 30 },
-      ],
-    },
-    {
       title: 'FizzBuzz',
       difficulty: 'Easy',
-      description: `Print numbers from 1 to n.
-- Divisible by 3: print "Fizz"
-- Divisible by 5: print "Buzz"
-- Both: print "FizzBuzz"
-- Otherwise: print the number
+      description: `Print numbers from 1 to n following these rules:
+- Divisible by 3 → print "Fizz"
+- Divisible by 5 → print "Buzz"
+- Divisible by both → print "FizzBuzz"
+- Otherwise → print the number
+
+Each value on a new line.
 
 Input: single integer n
 Output: n lines
@@ -163,8 +126,9 @@ Fizz
 4
 Buzz`,
       testCases: [
-        { input: '5',  expected: '1\n2\nFizz\n4\nBuzz',                                                                                    sample: true,  pts: 30 },
-        { input: '15', expected: '1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz', sample: false, pts: 70 },
+        { input: '5',  expected: '1\n2\nFizz\n4\nBuzz', sample: true,  pts: 30 },
+        { input: '3',  expected: '1\n2\nFizz',           sample: true,  pts: 20 },
+        { input: '15', expected: '1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz', sample: false, pts: 50 },
       ],
     },
     {
@@ -179,15 +143,15 @@ Example:
 Input: hello
 Output: olleh`,
       testCases: [
-        { input: 'hello',     expected: 'olleh',     sample: true,  pts: 25 },
-        { input: 'racecar',   expected: 'racecar',   sample: true,  pts: 25 },
-        { input: 'TierHire',  expected: 'eriHreiT',  sample: false, pts: 50 },
+        { input: 'hello',    expected: 'olleh',    sample: true,  pts: 25 },
+        { input: 'racecar',  expected: 'racecar',  sample: true,  pts: 25 },
+        { input: 'TierHire', expected: 'eriHreiT', sample: false, pts: 50 },
       ],
     },
     {
       title: 'Count Vowels',
       difficulty: 'Easy',
-      description: `Count the number of vowels (a,e,i,o,u — case insensitive) in a string.
+      description: `Count the number of vowels (a, e, i, o, u — case insensitive) in a string.
 
 Input: a single line string
 Output: integer count
@@ -203,10 +167,34 @@ Output: 3`,
       ],
     },
     {
+      title: 'Two Sum',
+      difficulty: 'Medium',
+      description: `Given space-separated integers and a target on the next line,
+print the 0-based indices of the two numbers that add up to the target.
+
+Input:
+Line 1: space-separated integers
+Line 2: target integer
+
+Output: two space-separated indices (e.g. "0 1")
+
+Example:
+Input:
+2 7 11 15
+9
+Output: 0 1`,
+      testCases: [
+        { input: '2 7 11 15\n9', expected: '0 1', sample: true,  pts: 20 },
+        { input: '3 2 4\n6',     expected: '1 2', sample: true,  pts: 20 },
+        { input: '3 3\n6',       expected: '0 1', sample: false, pts: 30 },
+        { input: '1 2 3 4 5\n9', expected: '3 4', sample: false, pts: 30 },
+      ],
+    },
+    {
       title: 'Valid Parentheses',
       difficulty: 'Medium',
       description: `Determine if a string of brackets is valid.
-Valid means every opening bracket is closed by the same type in the correct order.
+Valid means every opening bracket is closed in the correct order.
 Allowed characters: ( ) [ ] { }
 
 Input: a string of brackets
@@ -225,8 +213,8 @@ Output: true`,
     },
     {
       title: 'Maximum Subarray',
-      difficulty: 'Medium',
-      description: `Find the contiguous subarray with the largest sum and return its sum.
+      difficulty: 'Hard',
+      description: `Find the contiguous subarray with the largest sum and print that sum.
 
 Input: space-separated integers
 Output: maximum subarray sum
@@ -236,9 +224,9 @@ Input: -2 1 -3 4 -1 2 1 -5 4
 Output: 6`,
       testCases: [
         { input: '-2 1 -3 4 -1 2 1 -5 4', expected: '6',  sample: true,  pts: 20 },
-        { input: '1',                       expected: '1',  sample: true,  pts: 10 },
-        { input: '5 4 -1 7 8',              expected: '23', sample: false, pts: 30 },
-        { input: '-1 -2 -3 -4',             expected: '-1', sample: false, pts: 40 },
+        { input: '1',                      expected: '1',  sample: true,  pts: 10 },
+        { input: '5 4 -1 7 8',             expected: '23', sample: false, pts: 30 },
+        { input: '-1 -2 -3 -4',            expected: '-1', sample: false, pts: 40 },
       ],
     },
   ];
@@ -258,5 +246,6 @@ Output: 6`,
       );
     }
   }
-  return { message: `Seeded ${PROBLEMS.length} problems` };
+
+  return { message: `Seeded ${PROBLEMS.length} problems with test cases` };
 };
