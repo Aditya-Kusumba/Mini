@@ -70,7 +70,7 @@ export default function RecruiterRegister() {
           ))}
         </div>
 
-        <h1 className="auth-heading">Create recruiter account</h1>
+        <h1 className="auth-heading">Create College Admin account</h1>
         <p className="auth-desc">
           Already have one? <Link to="/login">Sign in →</Link>
         </p>
@@ -143,7 +143,7 @@ export default function RecruiterRegister() {
           )}
 
           <button type="submit" className="auth-submit" disabled={loading}>
-            {loading ? <span className="btn-spinner" /> : 'Create recruiter account'}
+            {loading ? <span className="btn-spinner" /> : 'Create College Admin account'}
           </button>
         </form>
       </div>

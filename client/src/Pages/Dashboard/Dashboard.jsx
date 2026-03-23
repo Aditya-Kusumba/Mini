@@ -98,8 +98,6 @@ export default function Dashboard() {
           <div className="section-title" style={{ marginBottom: 14 }}>Quick actions</div>
           {[
             { label: 'Solve a problem',   to: '/problems',        icon: Code2 },
-            { label: 'Join a contest',    to: '/contests',        icon: Trophy },
-            { label: 'View performance',  to: '/pastperformance', icon: BarChart3 },
             { label: 'Update profile',    to: '/profile',         icon: Target },
           ].map(({ label, to, icon: Icon }) => (
             <Link key={to} to={to} className="qa-item">

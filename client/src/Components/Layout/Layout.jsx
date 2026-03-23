@@ -13,8 +13,6 @@ const CANDIDATE_NAV = [
   { label: 'Dashboard',        to: '/dashboard',         icon: LayoutDashboard },
   { label: 'Domains',          to: '/domain/selection',  icon: Globe },
   { label: 'Problems',         to: '/problems',          icon: Code2 },
-  { label: 'Contests',         to: '/contests',          icon: Trophy },
-  { label: 'Past Performance', to: '/pastperformance',   icon: Clock },
 ];
 
 const ADMIN_NAV = [

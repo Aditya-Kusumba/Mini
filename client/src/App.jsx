@@ -17,7 +17,6 @@ import ProfileSetup from './pages/Profile/ProfileSetup';
 // ── Candidate ──
 import Dashboard       from './pages/Dashboard/Dashboard';
 import UpdateDashboard from './pages/Dashboard/UpdateDashboard';
-import PastPerformance from './pages/Dashboard/PastPerformance';
 import DomainSelection from './pages/Domain/DomainSelection';
 import DomainDashboard from './pages/Domain/DomainDashboard';
 import ProblemLobby    from './pages/Problem/ProblemLobby';
@@ -35,8 +34,8 @@ import ExamLobby    from './Exam/ExamLobby';
 import ExamView     from './Exam/ExamView';
 import Coderunner   from './Exam/CodeRunner';
 import CreateEvent  from './Exam/AdminAcess';
-import ContestLobby from './Contests/ContestLobby';
-import ContestView  from './Contests/ContestView';
+// import ContestLobby from './Contests/ContestLobby';
+// import ContestView  from './Contests/ContestView';
 
 import './styles/globals.css';
 
@@ -65,14 +64,11 @@ export default function App() {
               <Route element={<Layout />}>
                 <Route path="/dashboard"           element={<Dashboard />} />
                 <Route path="/updatedashboard"     element={<UpdateDashboard />} />
-                <Route path="/pastperformance"     element={<PastPerformance />} />
                 <Route path="/profile"             element={<ProfileSetup />} />
                 <Route path="/domain/selection"    element={<DomainSelection />} />
                 <Route path="/domain/:domainId"    element={<DomainDashboard />} />
                 <Route path="/problems"            element={<ProblemLobby />} />
                 <Route path="/problem/:problemId"  element={<ProblemView />} />
-                <Route path="/contests"            element={<ContestLobby />} />
-                <Route path="/contest/:contestId"  element={<ContestView />} />
                 <Route path="/exams"               element={<ExamLobby />} />
                 <Route path="/exam/:problemId"     element={<ExamView />} />
                 <Route path="/CodeRunner"          element={<Coderunner />} />
@@ -97,7 +93,7 @@ export default function App() {
               </Route>
             </Route>
 
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </Router>
       </AuthProvider>

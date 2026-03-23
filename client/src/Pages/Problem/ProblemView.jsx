@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Play, Send, RotateCcw, CheckCircle, XCircle,
-  AlertCircle, List, ChevronRight, Clock,
+  AlertCircle, List, ChevronRight, Clock, Settings,
 } from 'lucide-react';
+import Editor from '@monaco-editor/react';
 import api from '../../utils/api';
 import './Exam.css';
 
@@ -107,9 +108,45 @@ function Timer() {
   );
 }
 
+// ── Resizable panel hook ──────────────────────────────────
+function useResizablePanel(minWidth = 300) {
+  const [width, setWidth] = useState(45);
+  const containerRef = useRef(null);
+  const isResizing = useRef(false);
+
+  const handleMouseDown = (e) => {
+    isResizing.current = true;
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    if (!isResizing.current) return;
+
+    const handleMouseMove = (e) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+      if (newWidth > 25 && newWidth < 75) setWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isResizing.current = false;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  return { width, handleMouseDown, containerRef };
+}
+
 export default function ProblemView() {
   const { problemId } = useParams();
-  const taRef = useRef(null);
+  const { width, handleMouseDown, containerRef } = useResizablePanel();
 
   const [problem,     setProblem]     = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -138,19 +175,6 @@ export default function ProblemView() {
     }
     setLang(l); setCode(STARTERS[l]);
     setRunResults(null); setSubmitRes(null);
-  };
-
-  // Tab key → 2 spaces
-  const onKeyDown = (e) => {
-    if (e.key !== 'Tab') return;
-    e.preventDefault();
-    const { selectionStart: s, selectionEnd: en } = e.target;
-    const next = code.slice(0, s) + '  ' + code.slice(en);
-    setCode(next);
-    requestAnimationFrame(() => {
-      taRef.current.selectionStart = s + 2;
-      taRef.current.selectionEnd   = s + 2;
-    });
   };
 
   // Run (sample cases)
@@ -231,12 +255,12 @@ export default function ProblemView() {
         </div>
       </div>
 
-      <div className="exam-body">
+      <div className="exam-body" ref={containerRef}>
         {/* ── LEFT ── */}
-        <div className="exam-left">
+        <div className="exam-left" style={{ width: `${width}%` }}>
           <div className="exam-tabs">
             {[
-              { key: 'problem',     label: 'Problem' },
+              { key: 'problem',     label: 'Description' },
               { key: 'submissions', label: 'Submissions' },
             ].map(t => (
               <button key={t.key}
@@ -254,35 +278,48 @@ export default function ProblemView() {
                 <h2 className="prob-title">{problem.title}</h2>
                 <div className="prob-meta">
                   <span className={`badge ${DIFF[problem.difficulty]}`}>{problem.difficulty}</span>
-                  {problem.domainName && <span className="badge badge-gray">{problem.domainName}</span>}
                   <span className="badge badge-blue">{problem.totalPoints} pts</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)', marginLeft: 'auto' }}>
-                    {problem.totalTestCases} test cases · {problem.sampleTestCases?.length} visible
-                  </span>
                 </div>
 
-                <div className="prob-desc">{problem.description}</div>
+                {/* Description section */}
+                <div className="section">
+                  <h3 className="section-title">Description</h3>
+                  <div className="prob-desc">{problem.description}</div>
+                </div>
 
+                {/* Examples section */}
                 {problem.sampleTestCases?.length > 0 && (
-                  <>
-                    <div className="prob-samples-label">Sample test cases</div>
+                  <div className="section">
+                    <h3 className="section-title">Examples</h3>
                     {problem.sampleTestCases.map((tc, i) => (
-                      <div key={tc.id} className="tc-block">
-                        <div className="tc-label">Example {i + 1}</div>
+                      <div key={tc.id} className="example-block">
+                        <div className="example-num">Example {i + 1}</div>
                         {tc.input && (
-                          <div className="tc-row">
-                            <span className="tc-key">Input</span>
-                            <span className="tc-val">{tc.input}</span>
+                          <div className="example-row">
+                            <span className="example-label">Input:</span>
+                            <pre className="example-code">{tc.input}</pre>
                           </div>
                         )}
-                        <div className="tc-row">
-                          <span className="tc-key">Output</span>
-                          <span className="tc-val">{tc.expected_output}</span>
+                        <div className="example-row">
+                          <span className="example-label">Output:</span>
+                          <pre className="example-code">{tc.expected_output}</pre>
                         </div>
                       </div>
                     ))}
-                  </>
+                  </div>
                 )}
+
+                {/* Constraints section */}
+                <div className="section">
+                  <h3 className="section-title">Constraints</h3>
+                  <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>
+                    {problem.constraints ? (
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{problem.constraints}</div>
+                    ) : (
+                      <div style={{ color: 'var(--text-3)' }}>No constraints specified</div>
+                    )}
+                  </div>
+                </div>
               </>
             )}
 
@@ -315,6 +352,9 @@ export default function ProblemView() {
           </div>
         </div>
 
+        {/* ── RESIZE HANDLE ── */}
+        <div className="resize-handle" onMouseDown={handleMouseDown} />
+
         {/* ── RIGHT ── */}
         <div className="exam-right">
           {/* Editor toolbar */}
@@ -340,17 +380,24 @@ export default function ProblemView() {
 
           {/* Code editor */}
           <div className="code-area">
-            <textarea
-              ref={taRef}
-              className="code-textarea"
+            <Editor
+              height="100%"
+              language={lang}
               value={code}
-              onChange={e => setCode(e.target.value)}
-              onKeyDown={onKeyDown}
-              spellCheck={false}
-              autoCapitalize="off"
-              autoCorrect="off"
-              autoComplete="off"
-              placeholder={`Write your ${LANGS.find(l => l.key === lang)?.label} solution here…`}
+              onChange={v => setCode(v || '')}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 13,
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+                lineHeight: 24,
+                padding: { top: 16, bottom: 16 },
+                scrollBeyondLastLine: false,
+                wordWrap: 'on',
+                autoClosingBrackets: 'always',
+                formatOnPaste: true,
+                formatOnType: true,
+              }}
             />
           </div>
 

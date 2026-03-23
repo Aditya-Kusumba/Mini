@@ -322,7 +322,7 @@ const RecruiterRegister = ({ theme }) => {
     return (
     <div className="auth-form" key="register">
       <AnimatedMascot theme={theme} isPeeking={isPeeking}/>
-      <h2>Recruiter Sign Up</h2>
+      <h2>College Admin Sign Up</h2>
        <form onSubmit={handleSubmit}>
     <div className="input-group">
       <input 
