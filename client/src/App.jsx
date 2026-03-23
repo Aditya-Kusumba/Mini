@@ -36,7 +36,7 @@ import Coderunner   from './Exam/CodeRunner';
 import CreateEvent  from './Exam/AdminAcess';
 import ContestLobby from './Contests/ContestLobby';
 import ContestView  from './Contests/ContestView';
-import examRouter   from './routes/exam.routes.jsx';
+// import examRouter   from './routes/exam.routes.jsx';
 
 import './styles/globals.css';
 

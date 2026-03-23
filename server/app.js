@@ -9,6 +9,7 @@ import pg from "pg";
 import userRoutes from "./routes/user.routes.js";
 import candidateRouter from "./routes/candidate.routes.js";
 import domainDashboardRouter from "./routes/domainDashboard.routes.js";
+import problemRoutes from "./routes/problem.routes.js";
 
 const app = express();
 
@@ -45,6 +46,7 @@ try {
 // ✅ All routes registered once, after DB is ready
 app.use("/api/users", userRoutes);
 app.use("/api/v1/candidate", candidateRouter);
+app.use("/api/problems", problemRoutes)
 app.use("/api/v1/candidate", domainDashboardRouter); // ✅ correct
 
 export { app };
