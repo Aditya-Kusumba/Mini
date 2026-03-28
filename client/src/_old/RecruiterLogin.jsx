@@ -298,7 +298,7 @@ const RecruiterLogin = ({ theme }) => {
   return (
     <div className="auth-form" key="login">
       <AnimatedMascot theme={theme} isPeeking={isPeeking}/>
-      <h2>Recruiter Login</h2>
+      <h2>College Admin</h2>
       <form onSubmit={(e) => e.preventDefault()}>
         <div className="input-group">
           <input type="email" placeholder="Company Email" required />

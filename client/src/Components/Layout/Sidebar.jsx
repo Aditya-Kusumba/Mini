@@ -29,8 +29,6 @@ const Sidebar = () => {
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
     { path: '/domain/selection', icon: Target, label: 'Domains' },
     { path: '/exams', icon: Code, label: 'Problems' },
-    { path: '/contests', icon: Trophy, label: 'Exams and Contests' },
-    { path: '/pastperformance', icon: History, label: 'Past Performances' },
     { path: '/profile', icon: Settings, label: 'Profile' }
   ];
 

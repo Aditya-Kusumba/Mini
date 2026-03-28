@@ -7,7 +7,7 @@ import './Auth.css';
 const ROLES = [
   { key: 'candidate', label: 'Candidate', icon: User },
   { key: 'admin',     label: 'Admin',     icon: ShieldCheck },
-  { key: 'recruiter', label: 'Recruiter', icon: Briefcase },
+  { key: 'recruiter', label: 'College Admin', icon: Briefcase },
 ];
 
 export default function Login() {
@@ -46,8 +46,8 @@ export default function Login() {
 
   const headings = {
     candidate: { title: 'Sign in',       desc: 'Continue your learning journey.' },
-    admin:     { title: 'Admin sign in',  desc: 'Access your college management panel.' },
-    recruiter: { title: 'Recruiter sign in', desc: 'Find and hire top candidates.' },
+    admin:     { title: 'Admin sign in',  desc: 'Access your panel.' },
+    recruiter: { title: 'College Admin', desc: 'Find top candidates.' },
   };
 
   return (
@@ -80,8 +80,8 @@ export default function Login() {
         <h1 className="auth-heading">{headings[role].title}</h1>
         <p className="auth-desc">
           {headings[role].desc}{' '}
-          {role === 'candidate' && <><Link to="/register">Create account →</Link></>}
-          {role === 'recruiter' && <><Link to="/recruiter/register">Register →</Link></>}
+          {/* {role === 'candidate' && <><Link to="/register">Create account →</Link></>}
+          {role === 'recruiter' && <><Link to="/recruiter/register">Register →</Link></>} */}
         </p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
@@ -130,7 +130,7 @@ export default function Login() {
         {role === 'recruiter' && (
           <div className="auth-footer">
             <Link to="/recruiter/register" className="auth-footer-link">
-              <Briefcase size={13} /> Register as recruiter
+              <Briefcase size={13} /> Register as College Admin
             </Link>
           </div>
         )}

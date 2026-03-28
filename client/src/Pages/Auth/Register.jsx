@@ -181,7 +181,7 @@ export default function Register() {
                 <label className="field-label">Username</label>
                 <div className="field-input-wrap">
                   <span className="field-ico"><AtSign size={14} /></span>
-                  <input className="field-input" placeholder="manas_k"
+                  <input className="field-input" placeholder="john doe"
                     value={form.username}
                     onChange={e => set('username', e.target.value.toLowerCase().replace(/\s/g, '_'))}
                     autoComplete="username" required />
@@ -192,7 +192,7 @@ export default function Register() {
                 <label className="field-label">Email address</label>
                 <div className="field-input-wrap">
                   <span className="field-ico"><Mail size={14} /></span>
-                  <input className="field-input" type="email" placeholder="manas@example.com"
+                  <input className="field-input" type="email" placeholder="john@example.com"
                     value={form.email} onChange={e => set('email', e.target.value)}
                     autoComplete="email" required />
                 </div>

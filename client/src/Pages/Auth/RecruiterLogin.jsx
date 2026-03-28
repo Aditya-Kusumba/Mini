@@ -50,8 +50,8 @@ const RecruiterLogin = () => {
           <div className="auth-icon">
             <Building2 size={32} />
           </div>
-          <h1 className="auth-title">Recruiter Login</h1>
-          <p className="auth-subtitle">Access your recruiter dashboard</p>
+          <h1 className="auth-title">College Admin Login</h1>
+          <p className="auth-subtitle">Access your college management panel</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -139,7 +139,7 @@ const RecruiterLogin = () => {
           <p className="auth-footer-text">
             Don't have an account?{' '}
             <Link to="/recruiter/register" className="auth-link">
-              Register as recruiter
+              Register as College Admin
             </Link>
           </p>
           <p className="auth-footer-text">
