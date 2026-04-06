@@ -3,5 +3,5 @@ uvicorn
 pandas
 numpy
 pydantic
-torch
+uvicorn[standard]
 scikit-learn

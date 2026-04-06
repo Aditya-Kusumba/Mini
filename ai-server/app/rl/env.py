@@ -1,70 +1,79 @@
+# app/rl/env.py
+
 import numpy as np
 
 class StudentEnv:
-
     def __init__(self):
         self.reset()
 
     def reset(self):
-        self.true_ability = np.random.uniform(0.3, 0.7)
-        self.estimated_ability = 0.5
-        self.difficulty = 0.1
+        self.true_skill = np.random.uniform(0.2, 0.8)
+        self.estimated_skill = 0.5
+        self.last_difficulty = 0.5
+
+        self.history = []
         return self._get_state()
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+    def _get_state(self):
+        avg_time = np.mean([h['time'] for h in self.history]) if self.history else 0.5
+        avg_attempts = np.mean([h['attempts'] for h in self.history]) if self.history else 0.5
+        recent_acc = np.mean([h['correct'] for h in self.history[-5:]]) if self.history else 0.5
 
-    def step(self, action):
+        return np.array([
+            self.estimated_skill,
+            self.last_difficulty,
+            avg_time,
+            avg_attempts,
+            recent_acc
+        ], dtype=np.float32)
 
-        # smooth difficulty update
-        difficulty = self.difficulty + 0.3 * (action - self.difficulty)
-        difficulty = np.clip(difficulty, 0.1, 1.0)
-
-        prob = self.sigmoid(self.true_ability - difficulty)
+    def step(self, difficulty):
+        # probability of correct (IRT style)
+        prob = 1 / (1 + np.exp(5 * (difficulty - self.true_skill)))
         correct = np.random.rand() < prob
 
-        time_taken = max(20, (difficulty / self.true_ability) * 100)
-        attempts = np.random.randint(1, 3) if correct else np.random.randint(2, 5)
+        # realistic time
+        time_taken = np.random.normal(
+            loc=1 + (difficulty - self.true_skill),
+            scale=0.2
+        )
+        time_taken = np.clip(time_taken, 0.2, 2.5)
 
-        # update estimated ability
-        lr = 0.1
-        error = difficulty - self.estimated_ability
+        # attempts
+        attempts = 1 if correct else np.random.randint(2, 4)
 
-        if correct:
-            self.estimated_ability += lr * error
-        else:
-            self.estimated_ability -= lr * abs(error)
+        # update estimated skill (ELO style)
+        expected = prob
+        actual = 1 if correct else 0
+        self.estimated_skill += 0.1 * (actual - expected)
+        self.estimated_skill = np.clip(self.estimated_skill, 0, 1)
 
-        self.estimated_ability = np.clip(self.estimated_ability, 0, 1)
+        # reward
+        reward = self._compute_reward(correct, time_taken, attempts, difficulty)
 
-        # ===== CLEAN STABLE REWARD =====
+        # update history
+        self.history.append({
+            "time": time_taken,
+            "attempts": attempts,
+            "correct": correct
+        })
+
+        self.last_difficulty = difficulty
+
+        return self._get_state(), reward
+
+    def _compute_reward(self, correct, time_taken, attempts, difficulty):
         reward = 0
 
         # correctness
-        reward += 1 if correct else -1
+        reward += 1.5 if correct else -1.5
 
-        # encourage challenge zone
-        target = self.estimated_ability + 0.1
-        reward -= abs(difficulty - target)
+        # challenge alignment
+        target = self.estimated_skill + 0.1
+        reward -= 0.7 * abs(difficulty - target)
 
-        # penalties
-        reward -= 0.1 * attempts
-        reward -= 0.05 * (time_taken / 100)
+        # struggle penalties
+        reward -= 0.4 * (attempts - 1)
+        reward -= 0.3 * time_taken
 
-        # learning effect
-        if correct:
-            self.true_ability += 0.02 * difficulty
-
-        self.true_ability = np.clip(self.true_ability, 0, 1)
-        self.difficulty = difficulty
-
-        return self._get_state(), reward, False, {}
-
-    def _get_state(self):
-        return np.array([
-            self.estimated_ability,
-            self.difficulty,
-            0.5,
-            0.5,
-            0.5
-        ])
+        return reward

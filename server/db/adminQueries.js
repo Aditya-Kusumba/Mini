@@ -1,5 +1,5 @@
 import { query } from '../db.js';
-
+import { asyncHandler }  from '../utils/asyncHandler.js';
 // ============================================================
 // STUDENT MANAGEMENT
 // ============================================================
@@ -12,38 +12,64 @@ export const findCandidateByUsername = async (username) => {
   return result.rows[0] || null;
 };
 
-export const addStudentToCollege = async (collegeId, candidateId, adminId) => {
-  const result = await query(
-    `INSERT INTO "College_Students" ("collegeId","candidateId","addedBy")
-     VALUES ($1,$2,$3)
-     ON CONFLICT ("collegeId","candidateId") DO NOTHING
-     RETURNING *`,
-    [collegeId, candidateId, adminId]
+export const addStudent = asyncHandler(async (req, res) => {
+  const { email, collegeId } = req.body;
+  const addedBy = req.user?.id;
+
+  // 1️⃣ Find user by email
+  const userRes = await client.query(
+    `SELECT id FROM "Users" WHERE email = $1`,
+    [email]
   );
-  return result.rows[0] || null;
-};
 
-export const bulkAddStudents = async (collegeId, usernames, adminId) => {
-  const added = [], alreadyExists = [], notFound = [];
-
-  for (const username of usernames) {
-    const candidate = await findCandidateByUsername(username);
-    if (!candidate) { notFound.push(username); continue; }
-
-    const result = await query(
-      `INSERT INTO "College_Students" ("collegeId","candidateId","addedBy")
-       VALUES ($1,$2,$3)
-       ON CONFLICT ("collegeId","candidateId") DO NOTHING
-       RETURNING *`,
-      [collegeId, candidate.id, adminId]
-    );
-
-    if (result.rows.length > 0) added.push({ username, candidateId: candidate.id });
-    else alreadyExists.push(username);
+  if (!userRes.rows.length) {
+    throw new ApiError(404, "User not found with this email");
   }
 
-  return { added, alreadyExists, notFound };
-};
+  const candidateId = userRes.rows[0].id;
+
+  // 2️⃣ Insert mapping
+  await client.query(
+    `INSERT INTO "College_Students" ("collegeId", "candidateId", "addedBy")
+     VALUES ($1, $2, $3)
+     ON CONFLICT DO NOTHING`,
+    [collegeId, candidateId, addedBy]
+  );
+
+  return res.json(new ApiResponse(200, "Student added successfully"));
+});
+
+export const bulkAddStudents = asyncHandler(async (req, res) => {
+  const { username, collegeId } = req.body; 
+  const addedBy = req.user?.id;
+
+  // 1️⃣ Fetch all users in one query
+  const usersRes = await client.query(
+    `SELECT id, email FROM "Users" WHERE email = ANY($1)`,
+    [emails]
+  );
+
+  const emailToId = {};
+  usersRes.rows.forEach(u => {
+    emailToId[u.email] = u.id;
+  });
+
+  // 2️⃣ Insert valid users
+  const values = emails
+    .filter(email => emailToId[email])
+    .map(email => `(${collegeId}, ${emailToId[email]}, ${addedBy})`)
+    .join(",");
+
+  if (values.length) {
+    await client.query(
+      `INSERT INTO "College_Students" ("collegeId", "candidateId", "addedBy")
+       VALUES ${values}
+       ON CONFLICT DO NOTHING`
+    );
+  }
+
+  return res.json(new ApiResponse(200, "Bulk students added"));
+});
 
 export const removeStudentFromCollege = async (collegeId, candidateId) => {
   const result = await query(
@@ -132,44 +158,74 @@ export const getStudentProfile = async (collegeId, candidateId) => {
 // DOMAIN ASSIGNMENT
 // ============================================================
 
-export const assignDomainToStudent = async (candidateId, domainId, collegeId) => {
-  const result = await query(
-    `INSERT INTO "Candidate_Domain" ("candidateId","domainId","CollegeId")
-     VALUES ($1,$2,$3)
-     ON CONFLICT DO NOTHING
-     RETURNING *`,
-    [candidateId, domainId, collegeId]
+export const assignDomainToStudent = asyncHandler(async (req, res) => {
+  const { email, domainId, collegeId } = req.body;
+
+  // 1️⃣ Find user by email
+  const userRes = await client.query(
+    `SELECT id FROM "Users" WHERE email = $1`,
+    [email]
   );
-  return result.rows[0] || null;
-};
 
-export const bulkAssignDomain = async (candidateIds, domainId, collegeId) => {
-  const assigned = [], skipped = [];
-
-  for (const candidateId of candidateIds) {
-    const result = await query(
-      `INSERT INTO "Candidate_Domain" ("candidateId","domainId","CollegeId")
-       VALUES ($1,$2,$3)
-       ON CONFLICT DO NOTHING
-       RETURNING *`,
-      [candidateId, domainId, collegeId]
-    );
-    if (result.rows.length > 0) assigned.push(candidateId);
-    else skipped.push(candidateId);
+  if (!userRes.rows.length) {
+    throw new ApiError(404, "User not found");
   }
 
-  return { assigned, skipped };
-};
+  const candidateId = userRes.rows[0].id;
 
-export const removeDomainFromStudent = async (candidateId, domainId) => {
+  // 2️⃣ Insert into Candidate_Domain
+  await client.query(
+    `INSERT INTO "Candidate_Domain" ("candidateId", "domainId", "collegeId")
+     VALUES ($1, $2, $3)
+     ON CONFLICT DO NOTHING`,
+    [candidateId, domainId, collegeId]
+  );
+
+  return res.json(new ApiResponse(200, "Domain assigned successfully"));
+});
+
+export const bulkAssignDomain = asyncHandler(async (req, res) => {
+  const { emails, domainId, collegeId } = req.body;
+
+  // 1️⃣ Fetch all users at once
+  const usersRes = await client.query(
+    `SELECT id, email FROM "Users" WHERE email = ANY($1)`,
+    [emails]
+  );
+
+  const emailToId = {};
+  usersRes.rows.forEach(u => {
+    emailToId[u.email] = u.id;
+  });
+
+  // 2️⃣ Prepare bulk insert
+  const values = emails
+    .filter(email => emailToId[email])
+    .map(email => `(${emailToId[email]}, ${domainId}, ${collegeId})`)
+    .join(",");
+
+  if (values.length) {
+    await client.query(
+      `INSERT INTO "Candidate_Domain" ("candidateId", "domainId", "collegeId")
+       VALUES ${values}
+       ON CONFLICT DO NOTHING`
+    );
+  }
+
+  return res.json(new ApiResponse(200, "Bulk domain assignment done"));
+});
+
+export const removeDomainFromStudent = asyncHandler(async (req, res) => {
+  const { candidateId, domainId } = req.params;
+
   const result = await query(
     `DELETE FROM "Candidate_Domain"
      WHERE "candidateId"=$1 AND "domainId"=$2
      RETURNING *`,
     [candidateId, domainId]
   );
-  return result.rows[0] || null;
-};
+  return res.json(new ApiResponse(200, "Domain removed successfully", result.rows[0] || null));
+});
 
 // ============================================================
 // ANALYTICS
@@ -286,16 +342,35 @@ export const getCollegeBatches = async (collegeId) => {
   return result.rows;
 };
 
-export const addStudentsToBatch = async (batchId, candidateIds) => {
+export const addStudentToCollege = async (collegeId, candidateIds) => {
+  console.log(candidateIds, collegeId)
+  const added = [], skipped = [];
+
+  for (const candidateId of [candidateIds]) {
+    const result = await query(
+      `INSERT INTO "College_Students" ("collegeId","candidateId")
+       VALUES ($1,$2)
+       ON CONFLICT DO NOTHING
+       RETURNING *`,
+      [collegeId, candidateId]
+    );
+    if (result.rows.length > 0) added.push(candidateId);
+    else skipped.push(candidateId);
+  }
+
+  return { added, skipped };
+};
+
+export const addStudentsToBatch = async (collegeId, candidateIds) => {
   const added = [], skipped = [];
 
   for (const candidateId of candidateIds) {
     const result = await query(
-      `INSERT INTO "Batch_Students" ("batchId","candidateId")
+      `INSERT INTO "College_Students" ("collegeId","candidateId")
        VALUES ($1,$2)
        ON CONFLICT DO NOTHING
        RETURNING *`,
-      [batchId, candidateId]
+      [collegeId, candidateId]
     );
     if (result.rows.length > 0) added.push(candidateId);
     else skipped.push(candidateId);

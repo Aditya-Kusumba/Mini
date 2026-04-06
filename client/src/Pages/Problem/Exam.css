@@ -295,8 +295,68 @@
 /* Mobile */
 @media (max-width: 768px) {
   .exam-body    { flex-direction: column; }
-  .exam-left    { width: 100%; max-width: 100%; height: 45%; border-right: none; border-bottom: 1px solid var(--border); }
+  .exam-left {
+  width: 45%;
+  flex: 0 0 45%;
+}
   .exam-right   { height: 55%; }
   .results-panel{ height: 200px; }
   .resize-handle { display: none; }
+}
+
+.resize-handle {
+  cursor: col-resize;
+}
+
+.exam-left {
+  flex: 0 0 50%;
+}
+
+.exam-right {
+  flex: 0 0 50%;
+}
+
+.exam-body {
+  display: flex;
+  height: 100%;
+}
+
+.exam-left {
+  min-width: 300px;
+  overflow: auto;
+}
+
+.exam-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.resize-handle {
+  width: 5px;
+  cursor: col-resize;
+  background: #2a2a2a;
+}
+
+.resize-handle:hover {
+  background: #4f46e5;
+}
+
+.tc-result.pass {
+  border-left: 4px solid #16a34a;
+}
+
+.tc-result.fail {
+  border-left: 4px solid #dc2626;
+}
+
+.exam-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.results-panel {
+  flex: 1;                 /* take remaining space */
+  overflow-y: auto;
+  min-height: 0;           /* IMPORTANT for proper scrolling */
 }

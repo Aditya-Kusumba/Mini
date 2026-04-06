@@ -6,8 +6,8 @@ import './Auth.css';
 
 const ROLES = [
   { key: 'candidate', label: 'Candidate', icon: User },
-  { key: 'admin',     label: 'Admin',     icon: ShieldCheck },
-  { key: 'recruiter', label: 'College Admin', icon: Briefcase },
+  { key: 'admin',     label: 'College Admin',     icon: ShieldCheck },
+  { key: 'recruiter', label: 'Admin', icon: Briefcase },
 ];
 
 export default function Login() {
@@ -46,8 +46,8 @@ export default function Login() {
 
   const headings = {
     candidate: { title: 'Sign in',       desc: 'Continue your learning journey.' },
-    admin:     { title: 'Admin sign in',  desc: 'Access your panel.' },
-    recruiter: { title: 'College Admin', desc: 'Find top candidates.' },
+    admin:     { title: 'College Admin sign in',  desc: 'Access your panel.' },
+    recruiter: { title: 'Admin', desc: 'Find top candidates.' },
   };
 
   return (

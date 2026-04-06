@@ -1,191 +1,319 @@
-// server/controllers/problem.controller.js
-import { supabase } from "../db.js"; // adjust import to your supabase client
+import { client } from "../db.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
-// ── GET /api/problems/:problemId ──────────────────────────────────────────────
-export const getProblemById = asyncHandler(async (req, res) => {
-  const { problemId } = req.params;
+import { exec } from "child_process";
+import fs from "fs";
+import path from "path";
+import os from "os";
 
-  // Fetch problem with topic & domain name
-  const { data: problem, error: probErr } = await supabase
-    .from("Problems")
-    .select(`
-      id, title, description, difficulty, points,
-      constraints, input_format, output_format, hints,
-      createdAt,
-      Domains ( domainName ),
-      Topics ( topicName )
-    `)
-    .eq("id", problemId)
-    .single();
+// ─────────────────────────────────────────────
+// 🟡 LANGUAGE NORMALIZATION
+// ─────────────────────────────────────────────
+const normalizeLang = (lang) => {
+  return (lang || "").toLowerCase();
+};
 
-  if (probErr || !problem) {
-    throw new ApiError(404, "Problem not found");
-  }
+// ─────────────────────────────────────────────
+// 🟡 BUILD EXECUTION CODE (ONLY FOR PYTHON)
+// ─────────────────────────────────────────────
+const buildPythonWrapper = ({ userCode, funcName, input }) => {
+  return `
+import json
 
-  // Fetch test cases (return only sample ones to frontend for display)
-  const { data: testCases, error: tcErr } = await supabase
-    .from("Test_Cases")
-    .select("id, input, expected_output, is_sample, explanation, points")
-    .eq("problemId", problemId)
-    .order("id", { ascending: true });
+${userCode}
 
-  if (tcErr) {
-    throw new ApiError(500, "Failed to fetch test cases");
-  }
+try:
+    inputs = ${JSON.stringify(input)}
+    result = ${funcName}(**inputs)
+    print(json.dumps(result))
+except Exception as e:
+    print("ERROR:", str(e))
+`;
+};
 
-  const formattedProblem = {
-    ...problem,
-    domain_name: problem.Domains?.domainName,
-    topic_name: problem.Topics?.topicName,
-  };
+// ─────────────────────────────────────────────
+// 🔵 EXECUTE (DOCKER MULTI-LANGUAGE)
+// ─────────────────────────────────────────────
+const executeCode = async (code, language) => {
+  return new Promise((resolve) => {
+    const lang = normalizeLang(language);
 
-  return res.status(200).json(
-    new ApiResponse(200, { problem: formattedProblem, testCases }, "Problem fetched")
-  );
-});
+    const tmpDir = os.tmpdir();
+    let fileName = "";
+    let command = "";
 
-// ── POST /api/problems/:problemId/submit ──────────────────────────────────────
-export const submitProblem = asyncHandler(async (req, res) => {
+    // 🧠 Choose language
+    if (lang === "python") {
+      fileName = `code_${Date.now()}.py`;
+      fs.writeFileSync(path.join(tmpDir, fileName), code);
+
+      command = `docker run --rm -v ${tmpDir}:/app -w /app python:3.10 python ${fileName}`;
+    }
+
+    else if (lang === "javascript" || lang === "js") {
+      fileName = `code_${Date.now()}.js`;
+      fs.writeFileSync(path.join(tmpDir, fileName), code);
+
+      command = `docker run --rm -v ${tmpDir}:/app -w /app node:18 node ${fileName}`;
+    }
+
+    else if (lang === "java") {
+      fileName = `Main.java`;
+      fs.writeFileSync(path.join(tmpDir, fileName), code);
+
+      command = `docker run --rm -v ${tmpDir}:/app -w /app eclipse-temurin:17 bash -c "javac Main.java && java Main"`;
+    }
+
+    else if (lang === "cpp") {
+      fileName = `code.cpp`;
+      fs.writeFileSync(path.join(tmpDir, fileName), code);
+
+      command = `docker run --rm -v ${tmpDir}:/app -w /app gcc bash -c "g++ code.cpp -o out && ./out"`;
+    }
+
+    else if (lang === "c") {
+      fileName = `code.c`;
+      fs.writeFileSync(path.join(tmpDir, fileName), code);
+
+      command = `docker run --rm -v ${tmpDir}:/app -w /app gcc bash -c "gcc code.c -o out && ./out"`;
+    }
+
+    else {
+      return resolve({ error: "Unsupported language" });
+    }
+
+    exec(command, { timeout: 8000 }, (error, stdout, stderr) => {
+      try {
+        fs.unlinkSync(path.join(tmpDir, fileName));
+      } catch {}
+
+      if (error) {
+        return resolve({ error: stderr || error.message });
+      }
+
+      if (!stdout) {
+        return resolve({ error: "No output returned" });
+      }
+
+      let actual;
+      try {
+        actual = JSON.parse(stdout);
+      } catch {
+        actual = stdout.trim();
+      }
+
+      resolve({ actual });
+    });
+  });
+};
+
+// ─────────────────────────────────────────────
+// 🟢 RUN (SAMPLE TEST CASES)
+// ─────────────────────────────────────────────
+export const runProblem = asyncHandler(async (req, res) => {
   const { problemId } = req.params;
   const { code, language } = req.body;
-  const candidateId = req.user?.id;
 
-  if (!code || !language) {
-    throw new ApiError(400, "Code and language are required");
-  }
+  const lang = normalizeLang(language);
 
-  // Fetch ALL test cases for submission
-  const { data: testCases, error: tcErr } = await supabase
-    .from("Test_Cases")
-    .select("id, input, expected_output, points")
-    .eq("problemId", problemId)
-    .order("id", { ascending: true });
+  const problemRes = await client.query(
+    `SELECT function_name FROM "Problems" WHERE id = $1`,
+    [problemId]
+  );
 
-  if (tcErr || !testCases || testCases.length === 0) {
-    throw new ApiError(404, "No test cases found for this problem");
-  }
+  const funcName = problemRes.rows[0]?.function_name;
 
-  // Map language to Piston API values
-  const LANG_MAP = {
-    javascript: { language: "javascript", version: "18.15.0" },
-    python:     { language: "python",     version: "3.10.0"  },
-    java:       { language: "java",       version: "15.0.2"  },
-    cpp:        { language: "c++",        version: "10.2.0"  },
-    c:          { language: "c",          version: "10.2.0"  },
-  };
+  const tcRes = await client.query(
+    `SELECT * FROM "Test_Cases"
+     WHERE "problemId" = $1 AND is_sample = true`,
+    [problemId]
+  );
 
-  const lang = LANG_MAP[language];
-  if (!lang) throw new ApiError(400, `Unsupported language: ${language}`);
-
-  // Run code against all test cases via Piston
   const results = await Promise.all(
-    testCases.map(async (tc) => {
-      try {
-        const res = await fetch("https://emkc.org/api/v2/piston/execute", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            language: lang.language,
-            version: lang.version,
-            files: [{ content: code }],
-            stdin: tc.input || "",
-          }),
+    tcRes.rows.map(async (tc) => {
+      let finalCode = code;
+
+      // 🧠 Only Python needs wrapper
+      if (lang === "python") {
+        finalCode = buildPythonWrapper({
+          userCode: code,
+          funcName,
+          input: tc.input_json,
         });
-        const data = await res.json();
-        const actual = (data.run?.stdout || "").trim();
-        const expected = (tc.expected_output || "").trim();
-        const passed = actual === expected;
+      }
+
+      const exec = await executeCode(finalCode, lang);
+
+      if (exec.error) {
         return {
-          testCaseId: tc.id,
-          input: tc.input,
-          expected,
-          actual,
-          passed,
-          points: passed ? (tc.points || 10) : 0,
-          stderr: data.run?.stderr || "",
-        };
-      } catch (e) {
-        return {
-          testCaseId: tc.id,
           passed: false,
-          points: 0,
-          error: e.message,
+          error: exec.error,
+          input: tc.input_json,
         };
       }
+
+      const expected = tc.expected_output_json;
+
+      return {
+        passed:
+          JSON.stringify(exec.actual) === JSON.stringify(expected),
+        input: tc.input_json,
+        expected,
+        actual: exec.actual,
+      };
     })
   );
 
-  const passed = results.filter((r) => r.passed).length;
-  const total = results.length;
-  const score = results.reduce((sum, r) => sum + r.points, 0);
-  const allPassed = passed === total;
-  const status = allPassed ? "Solved" : passed > 0 ? "Attempted" : "Attempted";
+  return res.json(new ApiResponse(200, { results }));
+});
 
-  // Save submission to DB
-  if (candidateId) {
-    await supabase.from("Code_Submissions").insert({
-      candidateId,
-      problemId: parseInt(problemId),
-      language,
-      code,
-      status,
+// ─────────────────────────────────────────────
+// 🔴 SUBMIT (ALL TEST CASES)
+// ─────────────────────────────────────────────
+export const submitProblem = asyncHandler(async (req, res) => {
+  const { problemId } = req.params;
+  const { code, language } = req.body;
+  const userId = req.user?.id;
+
+  const lang = normalizeLang(language);
+
+  const problemRes = await client.query(
+    `SELECT function_name FROM "Problems" WHERE id = $1`,
+    [problemId]
+  );
+
+  const funcName = problemRes.rows[0]?.function_name;
+
+  const tcRes = await client.query(
+    `SELECT * FROM "Test_Cases"
+     WHERE "problemId" = $1`,
+    [problemId]
+  );
+
+  const results = await Promise.all(
+    tcRes.rows.map(async (tc) => {
+      let finalCode = code;
+
+      if (lang === "python") {
+        finalCode = buildPythonWrapper({
+          userCode: code,
+          funcName,
+          input: tc.input_json,
+        });
+      }
+
+      const exec = await executeCode(finalCode, lang);
+
+      if (exec.error) {
+        return {
+          passed: false,
+          error: exec.error,
+          input: tc.is_sample ? tc.input_json : "***hidden***",
+          points: 0,
+        };
+      }
+
+      const expected = tc.expected_output_json;
+      const passed =
+        JSON.stringify(exec.actual) === JSON.stringify(expected);
+
+      return {
+        passed,
+        input: tc.is_sample ? tc.input_json : "***hidden***",
+        expected: tc.is_sample ? expected : "***hidden***",
+        actual: exec.actual,
+        points: passed ? tc.points : 0,
+      };
+    })
+  );
+
+  const score = results.reduce((s, r) => s + (r.points || 0), 0);
+  const passedCount = results.filter((r) => r.passed).length;
+
+  const status =
+    passedCount === results.length ? "Accepted" : "Wrong Answer";
+
+  const submissionRes = await client.query(
+    `INSERT INTO "Code_Submissions"
+     ("candidateId", "problemId", "language", "status", "score", code)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id`,
+    [userId, problemId, language, status, score, code]
+  );
+
+  const submissionId = Number(submissionRes.rows[0].id);
+
+  await client.query(
+    `INSERT INTO "Candidate_Problems"
+     ("candidate_id", "problem_id", "submissions", "end_time")
+     VALUES ($1, $2, to_jsonb(ARRAY[$3]), 
+       CASE WHEN $4 = true THEN NOW() ELSE NULL END
+     )
+     ON CONFLICT ("candidate_id", "problem_id")
+     DO UPDATE SET
+       submissions = COALESCE("Candidate_Problems".submissions, '[]'::jsonb) || to_jsonb($3::int),
+       end_time = CASE 
+         WHEN $4 = true AND "Candidate_Problems".end_time IS NULL THEN NOW()
+         ELSE "Candidate_Problems".end_time
+       END`,
+    [userId, problemId, submissionId, status === "Accepted"]
+  );
+
+  return res.json(
+    new ApiResponse(200, {
       score,
+      passed: passedCount,
+      total: results.length,
       results,
-      submittedAt: new Date().toISOString(),
-    });
-
-    // Also upsert Problem_Submissions
-    const { data: existing } = await supabase
-      .from("Problem_Submissions")
-      .select("id, status")
-      .eq("candidateId", candidateId)
-      .eq("problemId", problemId)
-      .single();
-
-    if (existing) {
-      await supabase
-        .from("Problem_Submissions")
-        .update({
-          status: allPassed ? "Solved" : existing.status === "Solved" ? "Solved" : "Attempted",
-          attemptCount: (existing.attemptCount || 1) + 1,
-          solvedAt: allPassed ? new Date().toISOString() : existing.solvedAt,
-        })
-        .eq("id", existing.id);
-    } else {
-      await supabase.from("Problem_Submissions").insert({
-        candidateId,
-        problemId: parseInt(problemId),
-        status,
-        solvedAt: new Date().toISOString(),
-        attemptCount: 1,
-      });
-    }
-  }
-
-  return res.status(200).json(
-    new ApiResponse(200, { allPassed, passed, total, score, results }, "Submission complete")
+    })
   );
 });
 
-// ── GET /api/problems/:problemId/submissions ──────────────────────────────────
+export const getProblemById = asyncHandler(async (req, res) => {
+  const { problemId } = req.params;
+  const userId = req.user?.id;
+
+  const problemRes = await client.query(
+    `SELECT * FROM "Problems"
+     WHERE id = $1
+     AND ("userId" IS NULL OR "userId" = $2)`,
+    [problemId, userId]
+  );
+
+  if (!problemRes.rows.length) {
+    throw new ApiError(404, "Problem not found");
+  }
+
+  const problem = problemRes.rows[0];
+
+  const tcRes = await client.query(
+    `SELECT id, input_json, expected_output_json, is_sample, explanation, points
+     FROM "Test_Cases"
+     WHERE "problemId" = $1`,
+    [problemId]
+  );
+
+  return res.json(
+    new ApiResponse(200, {
+      problem,
+      testCases: tcRes.rows,
+    })
+  );
+});
+
 export const getProblemSubmissions = asyncHandler(async (req, res) => {
   const { problemId } = req.params;
-  const candidateId = req.user?.id;
+  const userId = req.user?.id;
 
-  const { data: submissions, error } = await supabase
-    .from("Code_Submissions")
-    .select("id, language, status, score, submittedAt")
-    .eq("candidateId", candidateId)
-    .eq("problemId", problemId)
-    .order("submittedAt", { ascending: false })
-    .limit(20);
-
-  if (error) throw new ApiError(500, "Failed to fetch submissions");
-
-  return res.status(200).json(
-    new ApiResponse(200, { submissions }, "Submissions fetched")
+  const result = await client.query(
+    `SELECT id, language, status, score, "submittedAt"
+     FROM "Code_Submissions"
+     WHERE "candidateId" = $1 AND "problemId" = $2
+     ORDER BY "submittedAt" DESC`,
+    [userId, problemId]
   );
+
+  return res.json(new ApiResponse(200, result.rows));
 });

@@ -10,7 +10,7 @@ import {
   removeStudentFromCollege, getCollegeStudents, getStudentProfile,
   assignDomainToStudent, bulkAssignDomain, removeDomainFromStudent,
   getCollegeOverview, getDomainAnalytics, getLeaderboard,
-  createBatch, getCollegeBatches, addStudentsToBatch, getBatchStudents,
+  createBatch, getCollegeBatches, addStudentsToBatch, getBatchStudents
 } from '../db/adminQueries.js';
 import {
   computePlacementScore, computeAllPlacementScores,

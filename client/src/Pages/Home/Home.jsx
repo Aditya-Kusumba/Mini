@@ -22,7 +22,7 @@ const FEATURES = [
     color: '#2d1f3d',
     iconColor: '#a78bfa',
     title: 'Get discovered',
-    desc: 'Recruiters find you by domain expertise and placement readiness score.',
+    desc: '=Admins find you by domain expertise and placement readiness score.',
   },
   {
     icon: Globe,
@@ -49,8 +49,8 @@ const FEATURES = [
 
 const STATS = [
   { value: '4',    label: 'Domains' },
-  { value: '70+',  label: 'Languages supported' },
-  { value: '3',    label: 'User roles' },
+  { value: '5',  label: 'Languages supported' },
+  { value: '2',    label: 'User roles' },
   { value: '100%', label: 'Free to use' },
 ];
 
@@ -91,7 +91,7 @@ export default function Home() {
 
         <p className="hero-sub">
           A fair, continuous framework that tracks real learning progress —<br />
-          not just exam scores. Built for students, colleges, and recruiters.
+          not just exam scores. Built for students and colleges.
         </p>
 
         <div className="hero-actions">
@@ -163,7 +163,6 @@ export default function Home() {
         <div className="footer-links">
           <Link to="/register">Register</Link>
           <Link to="/login">Login</Link>
-          <Link to="/recruiter/register">Recruiters</Link>
         </div>
       </footer>
     </div>
