@@ -63,21 +63,20 @@ class StudentEnv:
         return self._get_state(), reward
 
     def _compute_reward(self, correct, time_taken, attempts, difficulty):
-        # correctness
         base = 1 if correct else -1
-
-        # challenge alignment (STRONG)
+        # challenge alignment (smooth, strong signal)
         target = self.estimated_skill + 0.1
         alignment_error = abs(difficulty - target)
 
-        # penalties
-        struggle_penalty = 0.3 * time_taken + 0.3 * (attempts - 1)
+        alignment_reward = np.exp(-5 * alignment_error)  # 🔥 key fix
 
-        # FINAL (IMPORTANT BALANCE)
+        # struggle penalties
+        struggle_penalty = 0.2 * time_taken + 0.2 * (attempts - 1)
+
         reward = (
-            1.0 * base
-            - 1.2 * alignment_error     # 🔥 MUCH STRONGER
-            - 0.5 * struggle_penalty
+            1.0 * base +
+            1.5 * alignment_reward -     # reward good alignment
+            0.5 * struggle_penalty
         )
 
         return reward

@@ -56,7 +56,8 @@ def train():
         # normalize returns (stability)
         returns = (returns - returns.mean()) / (returns.std() + 1e-8)
 
-        loss = -(log_probs * returns).mean()
+        entropy = dist.entropy().mean()
+        loss = -(log_probs * returns).mean() - 0.01 * entropy
 
         optimizer.zero_grad()
         loss.backward()
