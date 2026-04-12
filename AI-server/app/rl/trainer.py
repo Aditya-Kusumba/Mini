@@ -1,11 +1,21 @@
-# app/rl/trainer.py
-
 import torch
 import numpy as np
 from torch.distributions import Normal
 from env import StudentEnv
 from agent import PolicyNetwork
-from metrics import compute_returns, compute_alignment
+import torch.nn.functional as F
+
+
+def compute_returns(rewards, gamma=0.99):
+    returns = []
+    G = 0
+    for r in reversed(rewards):
+        G = r + gamma * G
+        returns.insert(0, G)
+    return returns
+
+
+from torch.distributions import Normal
 
 def train():
     env = StudentEnv()
@@ -13,23 +23,20 @@ def train():
 
     optimizer = torch.optim.Adam(policy.parameters(), lr=1e-3)
 
-    EPISODES = 6000
+    EPISODES = 4000
     GAMMA = 0.99
-
-    reward_history = []
-    alignment_scores = []
 
     for episode in range(EPISODES):
         state = env.reset()
 
         log_probs = []
         rewards = []
-        alignments = []
+        values = []
 
         for step in range(50):
             state_tensor = torch.FloatTensor(state)
 
-            mean, std = policy(state_tensor)
+            mean, std, value = policy(state_tensor)
             dist = Normal(mean, std)
 
             action = dist.sample()
@@ -39,41 +46,43 @@ def train():
 
             next_state, reward = env.step(difficulty)
 
-            # alignment tracking
-            skill = state[0]
-            alignments.append(compute_alignment(skill, difficulty))
-
             log_probs.append(log_prob)
             rewards.append(reward)
+            values.append(value)
 
             state = next_state
 
-        returns = compute_returns(rewards, GAMMA)
+        returns = []
+        G = 0
+        for r in reversed(rewards):
+            G = r + GAMMA * G
+            returns.insert(0, G)
+
         returns = torch.FloatTensor(returns)
+        values = torch.stack(values).squeeze()
+
+        # 🔥 ADVANTAGE (KEY)
+        advantage = returns - values.detach()
 
         log_probs = torch.stack(log_probs).squeeze()
 
-        # normalize returns (stability)
-        returns = (returns - returns.mean()) / (returns.std() + 1e-8)
+        # 🎯 actor loss
+        actor_loss = -(log_probs * advantage).mean()
 
-        entropy = dist.entropy().mean()
-        loss = -(log_probs * returns).mean() - 0.01 * entropy
+        # 🎯 critic loss
+        critic_loss = F.mse_loss(values, returns)
+
+        loss = actor_loss + 0.5 * critic_loss
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        reward_history.append(np.sum(rewards))
-        alignment_scores.append(np.mean(alignments))
-
         if episode % 200 == 0:
-            print(f"Episode {episode}")
-            print(f"Avg Reward: {np.mean(reward_history[-100:]):.3f}")
-            print(f"Alignment: {np.mean(alignment_scores[-100:]):.3f}")
-            print("------")
+            print(f"Episode {episode}, Reward: {sum(rewards):.2f}")
 
     torch.save(policy.state_dict(), "policy.pth")
-    print("Model saved!")
+
 
 if __name__ == "__main__":
     train()

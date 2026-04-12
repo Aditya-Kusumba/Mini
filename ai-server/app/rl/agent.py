@@ -1,24 +1,32 @@
-# app/rl/agent.py
-
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
 
 class PolicyNetwork(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.net = nn.Sequential(
+        self.shared = nn.Sequential(
             nn.Linear(5, 64),
             nn.ReLU(),
-            nn.Linear(64, 32),
+            nn.Linear(64, 64),
             nn.ReLU()
         )
 
-        self.mean = nn.Linear(32, 1)
-        self.log_std = nn.Parameter(torch.zeros(1))
+        # 🎯 actor (mean + std)
+        self.mean = nn.Linear(64, 1)
+        self.log_std = nn.Parameter(torch.ones(1) * -1.0)
 
-    def forward(self, state):
-        x = self.net(state)
+        # 🎯 critic (value)
+        self.value = nn.Linear(64, 1)
+
+    def forward(self, x):
+        x = self.shared(x)
+
         mean = self.mean(x)
         std = torch.exp(self.log_std)
-        return mean, std
+
+        value = self.value(x)
+
+        return mean, std, value

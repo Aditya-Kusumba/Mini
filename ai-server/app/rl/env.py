@@ -1,5 +1,3 @@
-# app/rl/env.py
-
 import numpy as np
 
 class StudentEnv:
@@ -10,7 +8,6 @@ class StudentEnv:
         self.true_skill = np.random.uniform(0.2, 0.8)
         self.estimated_skill = 0.5
         self.last_difficulty = 0.5
-
         self.history = []
         return self._get_state()
 
@@ -28,30 +25,19 @@ class StudentEnv:
         ], dtype=np.float32)
 
     def step(self, difficulty):
-        # probability of correct (IRT style)
         prob = 1 / (1 + np.exp(5 * (difficulty - self.true_skill)))
         correct = np.random.rand() < prob
 
-        # realistic time
-        time_taken = np.random.normal(
-            loc=1 + (difficulty - self.true_skill),
-            scale=0.2
-        )
+        time_taken = np.random.normal(1 + (difficulty - self.true_skill), 0.2)
         time_taken = np.clip(time_taken, 0.2, 2.5)
-
-        # attempts
         attempts = 1 if correct else np.random.randint(2, 4)
-
-        # update estimated skill (ELO style)
         expected = prob
         actual = 1 if correct else 0
         self.estimated_skill += 0.1 * (actual - expected)
         self.estimated_skill = np.clip(self.estimated_skill, 0, 1)
 
-        # reward
         reward = self._compute_reward(correct, time_taken, attempts, difficulty)
 
-        # update history
         self.history.append({
             "time": time_taken,
             "attempts": attempts,
@@ -63,20 +49,17 @@ class StudentEnv:
         return self._get_state(), reward
 
     def _compute_reward(self, correct, time_taken, attempts, difficulty):
-        base = 1 if correct else -1
-        # challenge alignment (smooth, strong signal)
         target = self.estimated_skill + 0.1
+
         alignment_error = abs(difficulty - target)
+        alignment_score = np.exp(-5 * alignment_error)
 
-        alignment_reward = np.exp(-5 * alignment_error)  # 🔥 key fix
+        performance = 1 if correct else 0
 
-        # struggle penalties
-        struggle_penalty = 0.2 * time_taken + 0.2 * (attempts - 1)
+        reward = alignment_score * (1.5 * performance + 0.5)
 
-        reward = (
-            1.0 * base +
-            1.5 * alignment_reward -     # reward good alignment
-            0.5 * struggle_penalty
-        )
+        struggle = 0.2 * time_taken + 0.2 * (attempts - 1)
+
+        reward -= 0.5 * struggle
 
         return reward

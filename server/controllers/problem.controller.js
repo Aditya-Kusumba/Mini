@@ -109,9 +109,119 @@ const executeCode = async (code, language) => {
   });
 };
 
-// ─────────────────────────────────────────────
-// 🟢 RUN (SAMPLE TEST CASES)
-// ─────────────────────────────────────────────
+import { generateProblemWithLLM } from "../services/llmService.js";
+
+export const generateAdaptiveProblem = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  // 🔥 1. Get last 5 submissions
+  const subRes = await client.query(`
+    SELECT * FROM "Code_Submissions"
+    WHERE "candidateId" = $1
+    ORDER BY "submittedAt" DESC
+    LIMIT 5
+  `, [userId]);
+
+  const submissions = subRes.rows;
+
+  // 🔥 2. Build state
+  const avg = arr => arr.length
+    ? arr.reduce((a, b) => a + b, 0) / arr.length
+    : 0.5;
+
+  const skill = submissions.length
+    ? avg(submissions.map(s => s.is_correct ? 1 : 0))
+    : 0.5;
+
+  const last_difficulty = submissions[0]?.difficulty || 0.5;
+
+  const state = [
+    skill,
+    last_difficulty,
+    0.5,
+    0.5,
+    skill
+  ];
+
+  // 🔥 3. Call RL
+  const axios = (await import("axios")).default;
+
+  const rlRes = await axios.post("http://127.0.0.1:8000/rl/next-difficulty", {
+    skill: state[0],
+    last_difficulty: state[1],
+    avg_time: state[2],
+    avg_attempts: state[3],
+    recent_accuracy: state[4]
+  });
+
+  const difficulty = rlRes.data.difficulty;
+
+  // 🔥 4. Get topic (basic for now)
+  const topicRes = await client.query(`
+    SELECT t."topicName" FROM "Topics" t
+    JOIN "Problems" p ON p."topicId" = t.id
+    LIMIT 1
+  `);
+
+  const topic = topicRes.rows[0]?.topicName || "Arrays";
+
+  // 🔥 5. CALL LLM
+  let llmProblem;
+  try {
+    llmProblem = await generateProblemWithLLM({
+      difficulty,
+      topic
+    });
+  } catch (e) {
+    console.log("LLM ERROR:", e.message);
+    throw new ApiError(500, "LLM generation failed");
+  }
+
+  // 🔥 6. SAVE PROBLEM
+  const insertProblem = await client.query(`
+    INSERT INTO "Problems"
+(title, description, function_name, difficulty, "domainId")
+VALUES ($1,$2,$3,$4,$5) returning *
+  `, [
+    llmProblem.title,
+    llmProblem.description,
+    llmProblem.function_name,
+    difficulty < 0.3 ? "Easy" :
+    difficulty < 0.6 ? "Medium" : "Hard",
+    1
+  ]);
+
+  const selected = insertProblem.rows[0];
+
+  // 🔥 7. SAVE TEST CASES
+  for (let tc of llmProblem.test_cases) {
+    await client.query(`
+      INSERT INTO "Test_Cases"
+      ("problemId", input_json, expected_output_json, is_sample, points)
+      VALUES ($1,$2,$3,true,10)
+    `, [
+      selected.id,
+      tc.input,
+      tc.output
+    ]);
+  }
+
+  await client.query(`
+    INSERT INTO "Candidate_Problems"
+    ("candidate_id", "problem_id", "submissions")
+    VALUES ($1, $2, '[]'::jsonb)
+    ON CONFLICT ("candidate_id", "problem_id")
+    DO NOTHING
+  `, [userId, selected.id]);
+
+  return res.json(
+    new ApiResponse(200, {
+      problem: selected,
+      difficulty
+    })
+  );
+});
+
 export const runProblem = asyncHandler(async (req, res) => {
   const { problemId } = req.params;
   const { code, language } = req.body;
@@ -173,8 +283,9 @@ export const runProblem = asyncHandler(async (req, res) => {
 // 🔴 SUBMIT (ALL TEST CASES)
 // ─────────────────────────────────────────────
 export const submitProblem = asyncHandler(async (req, res) => {
+  console.log("Submit request received with body:", req.body);
   const { problemId } = req.params;
-  const { code, language } = req.body;
+  const { code, language, difficulty } = req.body;
   const userId = req.user?.id;
 
   const lang = normalizeLang(language);
@@ -228,19 +339,19 @@ export const submitProblem = asyncHandler(async (req, res) => {
       };
     })
   );
-
+  console.log("Hi", results);
   const score = results.reduce((s, r) => s + (r.points || 0), 0);
   const passedCount = results.filter((r) => r.passed).length;
 
   const status =
     passedCount === results.length ? "Accepted" : "Wrong Answer";
-
+  const isCorrect = status === "Accepted";
   const submissionRes = await client.query(
     `INSERT INTO "Code_Submissions"
-     ("candidateId", "problemId", "language", "status", "score", code)
-     VALUES ($1, $2, $3, $4, $5, $6)
+("candidateId", "problemId", "language", "status", "score", code, difficulty, is_correct)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING id`,
-    [userId, problemId, language, status, score, code]
+    [userId, problemId, language, status, score, code, difficulty, isCorrect]
   );
 
   const submissionId = Number(submissionRes.rows[0].id);
@@ -260,7 +371,7 @@ export const submitProblem = asyncHandler(async (req, res) => {
        END`,
     [userId, problemId, submissionId, status === "Accepted"]
   );
-
+  console.log("Submission recorded with ID:", submissionId);
   return res.json(
     new ApiResponse(200, {
       score,
